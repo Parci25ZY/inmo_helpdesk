@@ -101,6 +101,9 @@ DATABASES = {
     }
 }
 
+# --- MODELO DE USUARIO PERSONALIZADO ---
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
 
 # ── Validación de Contraseñas ──────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
@@ -145,3 +148,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Necesario para django-tailwind en Windows
 INTERNAL_IPS = ['127.0.0.1']
 NPM_BIN_PATH = "C:/Program Files/nodejs/npm.cmd"
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = 'login'

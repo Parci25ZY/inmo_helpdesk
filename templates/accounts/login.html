@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Acceso — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<main class="min-h-screen flex flex-col lg:flex-row">
+
+  
+    <aside class="hidden lg:flex lg:w-[45%] xl:w-2/5 flex-col bg-zinc-950 text-white relative overflow-hidden">
+
+        {# Patrón de cuadrícula arquitectónica — puro Tailwind arbitrary values #}
+        <div class="absolute inset-0 opacity-[0.04] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:3.5rem_3.5rem]"></div>
+
+        {# Acento de color — franja diagonal #}
+        <div class="absolute top-0 right-0 w-1 h-full bg-amber-400 opacity-80"></div>
+
+        {# Contenido del panel izquierdo #}
+        <div class="relative z-10 flex flex-col justify-between h-full px-12 py-12">
+
+            {# Marca superior #}
+            <header class="flex items-center gap-3">
+                {# Ícono de edificio en SVG puro #}
+                <svg class="w-8 h-8 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+                </svg>
+                <span class="text-sm font-semibold tracking-widest uppercase text-zinc-400">InmoHelpdesk</span>
+            </header>
+
+            {# Bloque central: Propuesta de valor #}
+            <div class="space-y-8">
+                <div>
+                    <p class="text-xs font-medium tracking-[0.3em] uppercase text-amber-400 mb-4">Sistema de Gestión</p>
+                    <h2 class="text-4xl xl:text-5xl font-bold leading-[1.15] text-white">
+                        Mantenimiento<br>
+                        <span class="text-zinc-500">bajo control.</span>
+                    </h2>
+                </div>
+                <p class="text-base text-zinc-400 leading-relaxed max-w-xs">
+                    Plataforma centralizada de órdenes de trabajo, análisis por inteligencia artificial y seguimiento en tiempo real.
+                </p>
+
+                {# Feature pills — solo Tailwind #}
+                <ul class="space-y-3" aria-label="Características del sistema">
+                    <li class="flex items-center gap-3 text-sm text-zinc-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                        Tickets clasificados por IA (Gemini)
+                    </li>
+                    <li class="flex items-center gap-3 text-sm text-zinc-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                        Flujo de aprobación Human-in-the-Loop
+                    </li>
+                    <li class="flex items-center gap-3 text-sm text-zinc-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                        Interfaz Mobile-First para técnicos
+                    </li>
+                </ul>
+            </div>
+
+            {# Footer del panel #}
+            <footer class="text-xs font-mono text-zinc-600 tracking-wide">
+                v2.0 &nbsp;·&nbsp; Conexión cifrada &nbsp;·&nbsp; {% now "Y" %}
+            </footer>
+        </div>
+
+    </aside>
+
+    {# ── Panel Derecho: Formulario / Claro ── #}
+    <section class="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12 sm:px-16 lg:px-20 xl:px-32 relative">
+
+        {# Indicador de estado — top derecha #}
+        <div class="absolute top-8 right-8 flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-zinc-400" aria-label="Estado del sistema: activo">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Sistema Activo
+        </div>
+
+        <div class="w-full max-w-md">
+
+            {# Encabezado del formulario — solo visible en mobile porque en desktop lo muestra el panel izquierdo #}
+            <header class="mb-10">
+                <div class="flex items-center gap-2 mb-6 lg:hidden">
+                    <svg class="w-6 h-6 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+                    </svg>
+                    <span class="text-sm font-semibold tracking-widest uppercase text-zinc-500">InmoHelpdesk</span>
+                </div>
+                <h1 class="text-3xl font-bold text-zinc-900 tracking-tight">Accede a tu cuenta</h1>
+                <p class="mt-2 text-sm text-zinc-500 leading-relaxed">
+                    Inquilino, técnico o administrador — ingresa tus credenciales para continuar.
+                </p>
+            </header>
+
+            {# Errores de Django #}
+            {% if form.errors %}
+            <div role="alert" class="mb-6 flex gap-3 items-start bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+                <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <p>Credenciales incorrectas. Verifica tu usuario y contraseña.</p>
+            </div>
+            {% endif %}
+
+            {# Formulario de acceso #}
+            <form method="POST" action="" novalidate class="space-y-8">
+                {% csrf_token %}
+
+                <fieldset class="space-y-6 border-none p-0 m-0">
+                    <legend class="sr-only">Credenciales de acceso al sistema</legend>
+
+                    {# Campo Usuario #}
+                    <div class="group relative">
+                        <label for="username"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Usuario
+                        </label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            required
+                            autocomplete="username"
+                            spellcheck="false"
+                            placeholder="tu.usuario"
+                            class="w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 text-base font-medium text-zinc-900 placeholder-zinc-300 outline-none focus:border-zinc-900 transition-colors duration-200">
+                        {# Línea de énfasis animada — usando transform con Tailwind #}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                    </div>
+
+                    {# Campo Contraseña #}
+                    <div class="group relative">
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="password"
+                                class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 transition-colors duration-200 group-focus-within:text-zinc-800">
+                                Contraseña
+                            </label>
+                        </div>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            autocomplete="current-password"
+                            placeholder="••••••••••"
+                            class="w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 text-base font-medium text-zinc-900 placeholder-zinc-300 outline-none focus:border-zinc-900 transition-colors duration-200">
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                    </div>
+                </fieldset>
+
+                {# Botón de acción principal #}
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        class="group w-full flex items-center justify-between bg-zinc-900 text-white px-7 py-4 text-sm font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
+                        <span>Entrar al sistema</span>
+                        <svg class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            {# Pie del formulario #}
+            <footer class="mt-12 pt-6 border-t border-zinc-100">
+                <p class="text-xs font-mono text-zinc-400 text-center tracking-wide">
+                    Acceso restringido &nbsp;·&nbsp; &copy; {% now "Y" %} Administración Inmobiliaria
+                </p>
+            </footer>
+
+        </div>
+    </section>
+
+</main>
+{% endblock %}
