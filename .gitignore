@@ -1,0 +1,9 @@
+# Ignorar solo el entorno virtual
+venv/
+.venv/
+env/
+
+# Ignorar variables de entorno (seguridad)
+.env
+.env.local
+.env.production
