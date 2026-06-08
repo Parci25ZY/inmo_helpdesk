@@ -77,7 +77,7 @@ helpdesk_inmobiliario/
 │   ├── base.txt
 │   ├── development.txt
 │   └── production.txt
-├── .env.example
+├── .env
 ├── manage.py
 └── README.md
 ```
