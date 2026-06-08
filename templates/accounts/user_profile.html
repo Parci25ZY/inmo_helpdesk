@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi Perfil — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <!-- ── Header ───────────────────────────────────────────────────────── -->
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+            </svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    Mi Perfil
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                    SESIÓN ACTIVA &nbsp;·&nbsp; ROL: {{ request.user.get_role_display }}
+                </p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:px-8">
+
+        <!-- ── Mensajes ──────────────────────────────────────────────────── -->
+        {% if messages %}
+        <div class="space-y-2 mb-8">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium
+                {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800
+                {% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800
+                {% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">
+                {% if message.tags == 'success' %}
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                {% else %}
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                {% endif %}
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ── Card de identidad ──────────────────────────────────────── -->
+        <div class="bg-white border border-zinc-200 shadow-sm mb-8 overflow-hidden">
+            <!-- Franja decorativa superior -->
+            <div class="h-1.5 bg-gradient-to-r from-amber-400 via-amber-300 to-transparent"></div>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-6 p-6 sm:p-8">
+
+                <!-- Avatar de iniciales grande -->
+                <div class="w-20 h-20 shrink-0 bg-zinc-900 flex items-center justify-center text-xl font-bold text-amber-400 uppercase tracking-widest select-none">
+                    {% if request.user.first_name %}
+                        {{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}
+                    {% else %}
+                        {{ request.user.email|slice:":2"|upper }}
+                    {% endif %}
+                </div>
+
+                <!-- Info principal -->
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">
+                        {{ request.user.get_full_name|default:"Sin nombre asignado" }}
+                    </h2>
+                    <p class="font-mono text-sm text-zinc-500 mt-0.5">{{ request.user.email }}</p>
+                    <div class="flex flex-wrap items-center gap-3 mt-3">
+                        <span class="inline-flex items-center px-2.5 py-1 text-[0.65rem] font-mono tracking-widest uppercase border
+                            {% if request.user.role == 'ADMIN' %}border-amber-400 text-amber-700 bg-amber-50
+                            {% elif request.user.role == 'TECNICO' %}border-indigo-400 text-indigo-700 bg-indigo-50
+                            {% else %}border-zinc-300 text-zinc-600 bg-zinc-50{% endif %}">
+                            {{ request.user.get_role_display }}
+                        </span>
+                        {% if request.user.is_active %}
+                        <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            Cuenta Activa
+                        </span>
+                        {% endif %}
+                        <span class="text-xs font-mono text-zinc-400">
+                            Miembro desde {{ request.user.date_joined|date:"d/m/Y" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Formulario de edición ──────────────────────────────────── -->
+        <div class="border-b-2 border-zinc-900 pb-5 mb-8">
+            <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">
+                Edición de datos personales
+            </p>
+            <h3 class="text-xl font-bold text-zinc-900 tracking-tight">Actualizar Perfil</h3>
+            <p class="text-sm text-zinc-500 mt-1">
+                El rol y estado de tu cuenta solo puede ser modificado por un administrador.
+            </p>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div role="alert" class="mb-6 flex gap-3 items-start bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3">
+            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <ul class="space-y-1">
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="" novalidate class="space-y-10">
+            {% csrf_token %}
+
+            <!-- ── Datos editables ──────────────────────────────────── -->
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    Datos Personales
+                </legend>
+                <div class="grid gap-8 sm:grid-cols-2">
+
+                    <!-- Nombres -->
+                    <div class="group relative">
+                        <label for="{{ form.first_name.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Nombres
+                        </label>
+                        {{ form.first_name }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.first_name.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Apellidos -->
+                    <div class="group relative">
+                        <label for="{{ form.last_name.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Apellidos
+                        </label>
+                        {{ form.last_name }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.last_name.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Correo -->
+                    <div class="group relative">
+                        <label for="{{ form.email.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Correo Electrónico
+                        </label>
+                        {{ form.email }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.email.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Teléfono -->
+                    {% if form.phone %}
+                    <div class="group relative">
+                        <label for="{{ form.phone.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Teléfono
+                        </label>
+                        {{ form.phone }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.phone.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                </div>
+            </fieldset>
+
+            <!-- ── Datos de solo lectura ────────────────────────────── -->
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    Información de Cuenta (Solo Lectura)
+                </legend>
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <div class="bg-zinc-50 border border-zinc-100 px-4 py-3">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Rol asignado</p>
+                        <p class="text-sm font-semibold text-zinc-700">{{ request.user.get_role_display }}</p>
+                    </div>
+                    <div class="bg-zinc-50 border border-zinc-100 px-4 py-3">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Estado de la cuenta</p>
+                        <p class="text-sm font-semibold {% if request.user.is_active %}text-emerald-700{% else %}text-zinc-400{% endif %}">
+                            {% if request.user.is_active %}Activa{% else %}Inactiva{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- ── Acciones ─────────────────────────────────────────── -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-zinc-200 pt-6 gap-4">
+                <a href="{% url 'dashboard' %}"
+                   class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="group inline-flex items-center justify-between bg-zinc-900 text-white px-7 py-4 text-sm font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
+                    Guardar Cambios
+                    <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </button>
+            </div>
+
+        </form>
+    </main>
+</div>
+{% endblock %}

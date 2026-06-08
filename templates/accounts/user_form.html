@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <!-- ── Header ───────────────────────────────────────────────────────── -->
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+            </svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    <a href="{% url 'user_list' %}" class="hover:text-amber-400 transition-colors">Usuarios</a>
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    {{ title }}
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                    MÓDULO ADMINISTRATIVO &nbsp;·&nbsp; {{ request.user.email }}
+                </p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:px-8">
+
+        <!-- ── Encabezado del formulario ──────────────────────────────── -->
+        <div class="border-b-2 border-zinc-900 pb-6 mb-8">
+            <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">
+                {% if user_obj %}Editando cuenta existente{% else %}Nueva cuenta de acceso{% endif %}
+            </p>
+            <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">{{ title }}</h2>
+            {% if user_obj %}
+            <p class="text-sm text-zinc-500 mt-1">
+                Modificando datos de
+                <strong class="text-zinc-700">{{ user_obj.get_full_name }}</strong>
+                &mdash; <span class="font-mono">{{ user_obj.email }}</span>
+            </p>
+            {% else %}
+            <p class="text-sm text-zinc-500 mt-1">
+                Completa los datos para registrar un nuevo usuario en el sistema.
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- ── Errores globales del formulario ──────────────────────── -->
+        {% if form.non_field_errors %}
+        <div role="alert" class="mb-6 flex gap-3 items-start bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3">
+            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <ul class="space-y-1">
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="" novalidate class="space-y-10">
+            {% csrf_token %}
+
+            <!-- ── Sección: Datos personales ───────────────────────── -->
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    Datos Personales
+                </legend>
+                <div class="grid gap-8 sm:grid-cols-2">
+
+                    <!-- Nombres -->
+                    <div class="group relative">
+                        <label for="{{ form.first_name.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Nombres
+                        </label>
+                        {{ form.first_name }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.first_name.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Apellidos -->
+                    <div class="group relative">
+                        <label for="{{ form.last_name.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Apellidos
+                        </label>
+                        {{ form.last_name }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.last_name.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Correo -->
+                    <div class="group relative">
+                        <label for="{{ form.email.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Correo Electrónico
+                        </label>
+                        {{ form.email }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.email.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Teléfono -->
+                    {% if form.phone %}
+                    <div class="group relative">
+                        <label for="{{ form.phone.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Teléfono
+                        </label>
+                        {{ form.phone }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.phone.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                </div>
+            </fieldset>
+
+            <!-- ── Sección: Rol y permisos ──────────────────────────── -->
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    Rol y Permisos
+                </legend>
+                <div class="grid gap-8 sm:grid-cols-2">
+
+                    <!-- Rol -->
+                    <div>
+                        <label for="{{ form.role.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">
+                            Rol del Usuario
+                        </label>
+                        {{ form.role }}
+                        {% for error in form.role.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Estado activo / staff (solo en edición) -->
+                    {% if user_obj %}
+                    <div class="flex flex-col gap-4 justify-center pt-5">
+                        {% if form.is_active %}
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            {{ form.is_active }}
+                            <span class="text-sm font-medium text-zinc-700 group-hover:text-zinc-900 transition-colors">
+                                Cuenta activa
+                            </span>
+                            <span class="text-xs text-zinc-400">(el usuario puede iniciar sesión)</span>
+                        </label>
+                        {% endif %}
+                        {% if form.is_staff %}
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            {{ form.is_staff }}
+                            <span class="text-sm font-medium text-zinc-700 group-hover:text-zinc-900 transition-colors">
+                                Acceso al admin de Django
+                            </span>
+                        </label>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                </div>
+            </fieldset>
+
+            <!-- ── Sección: Contraseña (solo creación) ─────────────── -->
+            {% if not user_obj %}
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    Contraseña de Acceso
+                </legend>
+                <div class="grid gap-8 sm:grid-cols-2">
+
+                    <!-- Contraseña 1 -->
+                    <div class="group relative">
+                        <label for="{{ form.password1.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Contraseña
+                        </label>
+                        {{ form.password1 }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.password1.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                        {% if form.password1.help_text %}
+                        <p class="mt-2 text-xs text-zinc-400 leading-relaxed">{{ form.password1.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Contraseña 2 -->
+                    <div class="group relative">
+                        <label for="{{ form.password2.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            Confirmar Contraseña
+                        </label>
+                        {{ form.password2 }}
+                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        {% for error in form.password2.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </fieldset>
+            {% endif %}
+
+            <!-- ── Acciones ─────────────────────────────────────────── -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-zinc-200 pt-6 gap-4">
+                <a href="{% url 'user_list' %}"
+                   class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar y volver
+                </a>
+                <button type="submit"
+                    class="group inline-flex items-center justify-between bg-zinc-900 text-white px-7 py-4 text-sm font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
+                    {{ button_text }}
+                    <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </button>
+            </div>
+
+        </form>
+    </main>
+</div>
+{% endblock %}

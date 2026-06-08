@@ -3,199 +3,142 @@
 {% block title %}Panel Operativo — InmoHelpdesk{% endblock %}
 
 {% block content %}
-<!-- Layout principal del Dashboard -->
 <div class="min-h-screen flex flex-col bg-zinc-50">
 
-    <!-- Header Principal (Estilo barra de estado industrial) -->
-    <header
-        class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
         <div class="flex items-center gap-4">
-            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z" />
-            </svg>
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
             <div>
-                <h1 class="text-lg font-bold tracking-tight">InmoHelpdesk <span
-                        class="font-normal text-zinc-600 mx-1.5">/</span> Panel Operativo</h1>
-                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
-                    ID_SESION: {{ request.user.username }} | ROL: {{ request.user.get_rol_display }}
-                </p>
+                <h1 class="text-lg font-bold tracking-tight">InmoHelpdesk <span class="font-normal text-zinc-600 mx-1.5">/</span> Panel Operativo</h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">ID_SESION: {{ request.user.email }} | ROL: {{ request.user.get_role_display }}</p>
             </div>
         </div>
-        <nav>
-            <a href="{% url 'logout' %}"
-                class="flex items-center gap-2 text-xs font-mono tracking-widest uppercase text-zinc-400 hover:text-white transition-colors group">
-                Terminar Sesión
-                <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
-                    </path>
-                </svg>
-            </a>
-        </nav>
+        {% include 'partials/_nav.html' %}
     </header>
 
-    <!-- Área de Contenido -->
     <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-10">
 
-        <!-- Métricas Principales (KPIs) -->
+        <!-- ── KPIs ───────────────────────────────────────────────────── -->
         <section aria-labelledby="kpi-heading">
-            <h2 id="kpi-heading" class="sr-only">Tus Estadísticas</h2>
+            <h2 id="kpi-heading" class="sr-only">Estadísticas</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <!-- Tarjeta Amigable 1: Pendientes -->
                 <article class="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 rounded-[2rem] p-8 border border-amber-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
-                    <!-- Ícono decorativo gigante en el fondo -->
-                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-amber-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-amber-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <div class="relative z-10 flex flex-col h-full justify-between">
                         <div class="flex items-center gap-3 mb-6">
-                            <div class="w-12 h-12 rounded-full bg-white text-amber-500 shadow-sm flex items-center justify-center">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-base font-bold text-amber-900/80">Pendientes de Revisión</h3>
+                            <div class="w-12 h-12 rounded-full bg-white text-amber-500 shadow-sm flex items-center justify-center"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                            <h3 class="text-base font-bold text-amber-900/80">Pendientes de Atención</h3>
                         </div>
                         <div class="flex items-baseline gap-3">
-                            <p class="text-6xl font-black text-amber-600 tracking-tighter" style="font-family: 'Space Grotesk', sans-serif;">{{ pendientes }}</p>
-                            <p class="text-sm font-medium text-amber-700/60 leading-tight">tickets<br>en espera</p>
+                            <p class="text-6xl font-black text-amber-600 tracking-tighter">{{ pendientes }}</p>
+                            <p class="text-sm font-medium text-amber-700/60 leading-tight">tickets<br>en cola</p>
                         </div>
                     </div>
                 </article>
-
-                <!-- Tarjeta Amigable 2: En Progreso -->
                 <article class="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-blue-50 rounded-[2rem] p-8 border border-indigo-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
-                    <!-- Ícono decorativo gigante en el fondo -->
-                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-indigo-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-indigo-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2"/></svg>
                     <div class="relative z-10 flex flex-col h-full justify-between">
                         <div class="flex items-center gap-3 mb-6">
-                            <div class="w-12 h-12 rounded-full bg-white text-indigo-500 shadow-sm flex items-center justify-center">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="text-base font-bold text-indigo-900/80">Actualmente en Proceso</h3>
+                            <div class="w-12 h-12 rounded-full bg-white text-indigo-500 shadow-sm flex items-center justify-center"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+                            <h3 class="text-base font-bold text-indigo-900/80">En Proceso</h3>
                         </div>
                         <div class="flex items-baseline gap-3">
-                            <p class="text-6xl font-black text-indigo-600 tracking-tighter" style="font-family: 'Space Grotesk', sans-serif;">{{ en_progreso }}</p>
+                            <p class="text-6xl font-black text-indigo-600 tracking-tighter">{{ en_progreso }}</p>
                             <p class="text-sm font-medium text-indigo-700/60 leading-tight">tickets<br>atendiéndose</p>
                         </div>
                     </div>
                 </article>
-
             </div>
         </section>
 
-        <!-- Tabla de Tickets -->
-        <section aria-labelledby="tickets-heading">
-            <header
-                class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-4 mb-6 gap-2">
-                <div>
-                    <h2 id="tickets-heading" class="text-2xl font-bold text-zinc-900 tracking-tight">Registro de Tickets
-                    </h2>
-                    <p class="text-sm text-zinc-500 mt-1">Listado histórico y activo de órdenes de trabajo.</p>
-                </div>
-                <div class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase sm:text-right">
-                    Total Registros: {{ tickets|length|stringformat:"02d" }}
-                </div>
+        <!-- ── Accesos rápidos por rol ───────────────────────────────── -->
+        <section>
+            <header class="border-b-2 border-zinc-900 pb-4 mb-6">
+                <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">Accesos Directos</p>
+                <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Módulos Disponibles</h2>
             </header>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <a href="{% url 'ticket_list' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">01 · Operación</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Tickets</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Bandeja completa de incidencias.</p>
+                </a>
+                {% if request.user.is_inquilino and request.user.unidad_asignada %}
+                <a href="{% url 'ticket_create' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">02 · Reportar</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Nueva Incidencia</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Reporta un problema en tu unidad.</p>
+                </a>
+                {% endif %}
+                {% if request.user.is_admin %}
+                <a href="{% url 'edificio_list' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">03 · Inventario</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Edificios</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Inmuebles registrados.</p>
+                </a>
+                <a href="{% url 'unidad_list' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">04 · Espacios</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Unidades</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Departamentos y locales.</p>
+                </a>
+                <a href="{% url 'user_list' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">05 · Personas</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Usuarios</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Gestión de cuentas y roles.</p>
+                </a>
+                {% endif %}
+                <a href="{% url 'user_profile' %}" class="group bg-white border border-zinc-200 hover:border-amber-400 p-5 transition-all">
+                    <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600 mb-2">06 · Cuenta</p>
+                    <h3 class="text-lg font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">Mi Perfil</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Datos personales y cuenta.</p>
+                </a>
+            </div>
+        </section>
 
+        <!-- ── Tabla resumen de tickets recientes ────────────────────── -->
+        <section aria-labelledby="tickets-heading">
+            <header class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-4 mb-6 gap-2">
+                <div>
+                    <h2 id="tickets-heading" class="text-2xl font-bold text-zinc-900 tracking-tight">Últimos Tickets</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Vista resumida de la actividad reciente.</p>
+                </div>
+                <a href="{% url 'ticket_list' %}" class="text-xs font-mono tracking-widest uppercase text-amber-600 hover:text-zinc-900 transition-colors">Ver todos →</a>
+            </header>
             <div class="bg-white border border-zinc-200 overflow-x-auto shadow-sm">
                 <table class="w-full text-left border-collapse whitespace-nowrap min-w-[800px]">
                     <thead class="bg-zinc-50 border-b border-zinc-200">
                         <tr>
-                            <th scope="col"
-                                class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-24">
-                                ID / Fecha</th>
-                            <th scope="col"
-                                class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">
-                                Descripción Técnica</th>
-                            <th scope="col"
-                                class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-36">
-                                Estado Operativo</th>
-                            <th scope="col"
-                                class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-32">
-                                Nivel Prioridad</th>
-                            {% if request.user.rol == 'TECNICO' %}
-                            <th scope="col"
-                                class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-48">
-                                Inquilino Reporta</th>
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28">Código</th>
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Título</th>
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Estado</th>
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-32">Prioridad</th>
+                            {% if request.user.is_admin or request.user.is_tecnico %}
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Inquilino</th>
                             {% endif %}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100">
                         {% for ticket in tickets %}
-                        <tr class="hover:bg-zinc-50/80 transition-colors group">
-                            <!-- Columna ID / Fecha -->
+                        <tr class="hover:bg-zinc-50/80 transition-colors group cursor-pointer" onclick="window.location='{% url 'ticket_detail' ticket.pk %}'">
                             <td class="py-4 px-6 align-top">
-                                <div class="font-mono text-xs font-medium text-zinc-900">#{{
-                                    ticket.id|stringformat:"04d" }}</div>
-                                <time class="block mt-1 text-[0.65rem] text-zinc-400 font-mono tracking-wide">{{
-                                    ticket.creado_en|date:"d.m.y" }}</time>
+                                <p class="font-mono text-xs font-bold text-zinc-900">{{ ticket.codigo }}</p>
+                                <time class="block mt-1 text-[0.65rem] text-zinc-400 font-mono">{{ ticket.creado_en|date:"d.m.y" }}</time>
                             </td>
-
-                            <!-- Columna Título -->
-                            <td class="py-4 px-6 align-top whitespace-normal">
-                                <p
-                                    class="text-sm font-semibold text-zinc-900 group-hover:text-amber-600 transition-colors">
-                                    {{ ticket.titulo }}</p>
-                            </td>
-
-                            <!-- Columna Estado -->
                             <td class="py-4 px-6 align-top">
-                                <span class="inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border
-                                    {% if ticket.estado == 'PENDIENTE' %} border-amber-400 text-amber-700 bg-amber-50
-                                    {% elif ticket.estado == 'EN_PROGRESO' %} border-emerald-400 text-emerald-700 bg-emerald-50
-                                    {% elif ticket.estado == 'RESUELTO' %} border-zinc-900 text-white bg-zinc-900
-                                    {% else %} border-zinc-300 text-zinc-500 bg-zinc-50 {% endif %}">
-                                    {{ ticket.get_estado_display }}
-                                </span>
+                                <p class="text-sm font-semibold text-zinc-900 group-hover:text-amber-600 transition-colors">{{ ticket.titulo }}</p>
                             </td>
-
-                            <!-- Columna Prioridad -->
+                            <td class="py-4 px-6 align-top">{% include 'tickets/partials/_status_badge.html' with estado=ticket.estado display=ticket.get_estado_display %}</td>
+                            <td class="py-4 px-6 align-top">{% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}</td>
+                            {% if request.user.is_admin or request.user.is_tecnico %}
                             <td class="py-4 px-6 align-top">
-                                <div class="flex items-center gap-2">
-                                    {% if ticket.prioridad == 'URGENTE' or ticket.prioridad == 'ALTA' %}
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                    {% else %}
-                                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
-                                    {% endif %}
-                                    <span class="text-xs font-semibold text-zinc-700">{{ ticket.get_prioridad_display
-                                        }}</span>
-                                </div>
-                            </td>
-
-                            <!-- Columna Inquilino (Solo Técnico) -->
-                            {% if request.user.rol == 'TECNICO' %}
-                            <td class="py-4 px-6 align-top">
-                                <div class="flex items-center gap-2.5">
-                                    <div
-                                        class="w-7 h-7 rounded bg-zinc-200 flex items-center justify-center text-[0.65rem] font-bold text-zinc-600 uppercase shrink-0">
-                                        {{ ticket.inquilino.username|make_list|first }}
-                                    </div>
-                                    <span class="text-sm text-zinc-700 font-medium truncate max-w-[120px]">{{
-                                        ticket.inquilino.get_full_name|default:ticket.inquilino.username }}</span>
-                                </div>
+                                <span class="text-sm text-zinc-700 truncate max-w-[140px] block">{{ ticket.inquilino.get_full_name|default:ticket.inquilino.email }}</span>
                             </td>
                             {% endif %}
                         </tr>
                         {% empty %}
                         <tr>
                             <td colspan="5" class="py-16 px-6 text-center">
-                                <svg class="w-12 h-12 text-zinc-200 mx-auto mb-4" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                                    </path>
-                                </svg>
-                                <p class="text-sm font-semibold text-zinc-500">No hay órdenes de trabajo registradas en
-                                    el sistema.</p>
+                                <p class="text-sm font-semibold text-zinc-500">No hay tickets registrados todavía.</p>
                             </td>
                         </tr>
                         {% endfor %}

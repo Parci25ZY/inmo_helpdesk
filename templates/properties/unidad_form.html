@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    <a href="{% url 'unidad_list' %}" class="hover:text-amber-400 transition-colors">Unidades</a>
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    {{ title }}
+                </h1>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 lg:px-8">
+
+        <div class="border-b-2 border-zinc-900 pb-6 mb-8">
+            <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">{% if object %}Editando unidad{% else %}Nueva unidad{% endif %}</p>
+            <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">{{ title }}</h2>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div role="alert" class="mb-6 bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" novalidate class="space-y-10">
+            {% csrf_token %}
+
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">Ubicación e Identificación</legend>
+                <div class="grid gap-8 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label for="{{ form.edificio.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">Edificio</label>
+                        {{ form.edificio }}
+                        {% for error in form.edificio.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                    </div>
+                    {% include 'properties/_field.html' with field=form.numero label="Número/Identificador" %}
+                    {% include 'properties/_field.html' with field=form.piso label="Piso" %}
+                    <div>
+                        <label for="{{ form.tipo.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">Tipo</label>
+                        {{ form.tipo }}
+                        {% for error in form.tipo.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                    </div>
+                    {% include 'properties/_field.html' with field=form.area_m2 label="Área (m²)" %}
+                </div>
+            </fieldset>
+
+            <fieldset class="border-none p-0 m-0">
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">Asignación de Inquilino</legend>
+                <div class="space-y-6">
+                    <div>
+                        <label for="{{ form.inquilino.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">Inquilino asignado</label>
+                        {{ form.inquilino }}
+                        <p class="mt-2 text-xs text-zinc-400">Solo se muestran inquilinos sin unidad asignada actualmente.</p>
+                        {% for error in form.inquilino.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+                    </div>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        {{ form.activo }}
+                        <span class="text-sm font-medium text-zinc-700">Unidad activa</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-zinc-200 pt-6 gap-4">
+                <a href="{% url 'unidad_list' %}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>Cancelar</a>
+                <button type="submit" class="group inline-flex items-center justify-between bg-zinc-900 text-white px-7 py-4 text-sm font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98]">
+                    {{ button_text }}
+                    <svg class="w-4 h-4 ml-3 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </button>
+            </div>
+        </form>
+    </main>
+</div>
+{% endblock %}

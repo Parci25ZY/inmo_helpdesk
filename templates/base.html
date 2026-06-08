@@ -1,0 +1,212 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}InmoHelpdesk{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap" rel="stylesheet">
+    {% tailwind_css %}
+    <style>
+        :root {
+            --surface-0: #06070b;
+            --surface-1: #0e1017;
+            --surface-2: #171b27;
+            --text-main: #f6f7fb;
+            --text-soft: #a2a8bb;
+            --line-main: #2a2f41;
+            --accent-main: #fdba74;
+            --accent-soft: #ffd8ad;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-zinc-950 text-zinc-100" style="font-family: 'Space Grotesk', sans-serif;">
+    {% block content %}
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,_#1f2937_0%,_transparent_52%),_radial-gradient(circle_at_bottom_right,_#431407_0%,_transparent_50%),_linear-gradient(140deg,_#06070b_0%,_#111725_55%,_#1f2a44_100%)]">
+        <header class="w-full border-b border-white/10 backdrop-blur">
+            <div class="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between gap-4">
+                <div>
+                    <p class="font-mono text-xs tracking-[0.2em] uppercase text-amber-300/90">InmoHelpdesk</p>
+                    <h1 class="text-xl sm:text-2xl font-semibold text-white tracking-tight">Centro de Operaciones Inmobiliarias</h1>
+                </div>
+                <nav class="flex items-center gap-3">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'dashboard' %}" class="inline-flex items-center rounded-full border border-amber-300/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-300/10 transition">Ir al panel</a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="inline-flex items-center rounded-full border border-zinc-300/30 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-zinc-200/70 transition">Iniciar sesión</a>
+                    {% endif %}
+                </nav>
+            </div>
+        </header>
+
+        <main class="mx-auto max-w-6xl px-6 py-12 sm:py-16 space-y-12">
+            <section class="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+                <div class="space-y-6">
+                    <p class="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-3 py-1 text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-200">
+                        Plataforma unificada para gestión de tickets
+                    </p>
+                    <h2 class="text-3xl sm:text-5xl font-bold leading-tight text-white max-w-3xl">
+                        Toda la operación técnica de tus inmuebles en una sola vista.
+                    </h2>
+                    <p class="max-w-2xl text-zinc-300 text-base sm:text-lg leading-relaxed">
+                        Registra incidencias, prioriza mantenimiento y coordina la atención entre inquilinos y técnicos con trazabilidad completa.
+                    </p>
+                    <div class="flex flex-wrap gap-4">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'dashboard' %}" class="inline-flex items-center gap-2 rounded-xl bg-amber-300 px-5 py-3 text-sm font-bold uppercase tracking-wide text-zinc-900 hover:bg-amber-200 transition">
+                                Abrir dashboard
+                            </a>
+                        {% else %}
+                            <a href="{% url 'login' %}" class="inline-flex items-center gap-2 rounded-xl bg-amber-300 px-5 py-3 text-sm font-bold uppercase tracking-wide text-zinc-900 hover:bg-amber-200 transition">
+                                Acceder al sistema
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <article class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm shadow-[0_30px_80px_-35px_rgba(251,146,60,0.55)]">
+                    <h3 class="font-mono text-xs uppercase tracking-[0.2em] text-zinc-300">Estado del ecosistema</h3>
+                    <dl class="mt-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <dt class="text-zinc-300">Gestión de tickets</dt>
+                            <dd class="font-semibold text-emerald-300">Activo</dd>
+                        </div>
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <dt class="text-zinc-300">Roles de usuario</dt>
+                            <dd class="font-semibold text-emerald-300">Configurado</dd>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <dt class="text-zinc-300">Panel de seguimiento</dt>
+                            <dd class="font-semibold text-emerald-300">Disponible</dd>
+                        </div>
+                    </dl>
+                </article>
+            </section>
+
+            <section>
+                <h3 class="text-xl sm:text-2xl font-semibold text-white mb-6">Funcionalidades del sistema</h3>
+                <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">01</p>
+                        <h4 class="mt-2 font-semibold text-white">Autenticación por roles</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Ingreso seguro para técnicos e inquilinos con experiencia adaptada por perfil.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">02</p>
+                        <h4 class="mt-2 font-semibold text-white">Dashboard operativo</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Visualiza pendientes, casos en progreso y el estado general de la operación en tiempo real.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">03</p>
+                        <h4 class="mt-2 font-semibold text-white">Seguimiento de incidencias</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Controla prioridad, estado y responsables para cada ticket de mantenimiento.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">04</p>
+                        <h4 class="mt-2 font-semibold text-white">Flujo técnico estructurado</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Facilita la coordinación entre solicitud, evaluación, resolución y cierre del ticket.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">05</p>
+                        <h4 class="mt-2 font-semibold text-white">Historial y trazabilidad</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Consulta el registro de atención para auditoría operativa y control de calidad.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-5 hover:border-amber-300/40 transition">
+                        <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">06</p>
+                        <h4 class="mt-2 font-semibold text-white">Base para automatización IA</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Arquitectura lista para futuras sugerencias inteligentes y priorización asistida.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
+                    <div>
+                        <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200/90">Valor de negocio</p>
+                        <h3 class="text-xl sm:text-2xl font-semibold text-white mt-2">Beneficios para tu operación</h3>
+                    </div>
+                </div>
+                <div class="grid gap-5 md:grid-cols-2">
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <h4 class="text-lg font-semibold text-white">Respuesta más rápida a incidencias</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Prioriza tickets críticos y reduce tiempos muertos con una vista operativa unificada.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <h4 class="text-lg font-semibold text-white">Mayor control del equipo técnico</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Asigna seguimiento claro por estado y responsable para evitar cuellos de botella.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <h4 class="text-lg font-semibold text-white">Mejor experiencia para inquilinos</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Mantén comunicación trazable y reduce fricción en el reporte de problemas.</p>
+                    </article>
+                    <article class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <h4 class="text-lg font-semibold text-white">Decisiones basadas en historial</h4>
+                        <p class="mt-2 text-sm text-zinc-300">Aprovecha datos de casos previos para mejorar procesos y prevenir reincidencias.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section>
+                <div class="mb-6">
+                    <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200/90">Flujo de uso</p>
+                    <h3 class="text-xl sm:text-2xl font-semibold text-white mt-2">Cómo funciona</h3>
+                </div>
+                <ol class="grid gap-5 lg:grid-cols-3">
+                    <li class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200">Paso 01</p>
+                        <h4 class="mt-2 text-lg font-semibold text-white">Registro de incidencia</h4>
+                        <p class="mt-2 text-sm text-zinc-300">El inquilino crea un ticket detallando el problema y su prioridad.</p>
+                    </li>
+                    <li class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200">Paso 02</p>
+                        <h4 class="mt-2 text-lg font-semibold text-white">Gestión y atención técnica</h4>
+                        <p class="mt-2 text-sm text-zinc-300">El técnico revisa, actualiza estado y ejecuta las acciones de solución.</p>
+                    </li>
+                    <li class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200">Paso 03</p>
+                        <h4 class="mt-2 text-lg font-semibold text-white">Cierre y trazabilidad</h4>
+                        <p class="mt-2 text-sm text-zinc-300">El caso queda resuelto con historial disponible para control y mejora continua.</p>
+                    </li>
+                </ol>
+            </section>
+
+            <section>
+                <div class="mb-6">
+                    <p class="font-mono text-xs uppercase tracking-[0.2em] text-amber-200/90">Prueba social</p>
+                    <h3 class="text-xl sm:text-2xl font-semibold text-white mt-2">Testimonios</h3>
+                </div>
+                <div class="grid gap-5 lg:grid-cols-3">
+                    <blockquote class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="text-sm leading-relaxed text-zinc-200">"Ahora tenemos visibilidad total de cada incidencia. Los tiempos de respuesta mejoraron desde la primera semana."</p>
+                        <footer class="mt-4 text-xs font-mono uppercase tracking-[0.18em] text-zinc-400">Administrador de edificios</footer>
+                    </blockquote>
+                    <blockquote class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="text-sm leading-relaxed text-zinc-200">"Como técnico, el flujo es claro y puedo priorizar sin perder contexto entre tickets."</p>
+                        <footer class="mt-4 text-xs font-mono uppercase tracking-[0.18em] text-zinc-400">Coordinador técnico</footer>
+                    </blockquote>
+                    <blockquote class="rounded-2xl border border-white/10 bg-zinc-900/60 p-6">
+                        <p class="text-sm leading-relaxed text-zinc-200">"Reportar problemas es más simple y sé en qué estado está mi solicitud en todo momento."</p>
+                        <footer class="mt-4 text-xs font-mono uppercase tracking-[0.18em] text-zinc-400">Inquilino residencial</footer>
+                    </blockquote>
+                </div>
+            </section>
+        </main>
+
+        <footer class="border-t border-white/10 mt-8">
+            <div class="mx-auto max-w-6xl px-6 py-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="font-mono text-xs uppercase tracking-[0.18em] text-amber-200">InmoHelpdesk</p>
+                    <p class="text-sm text-zinc-400 mt-2">Gestión integral de mantenimiento inmobiliario.</p>
+                </div>
+                <div class="text-sm text-zinc-400">
+                    © {% now "Y" %} InmoHelpdesk. Todos los derechos reservados.
+                </div>
+            </div>
+        </footer>
+    </div>
+    {% endblock %}
+</body>
+</html>

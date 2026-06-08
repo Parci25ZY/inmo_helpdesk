@@ -1,0 +1,10 @@
+{% comment %}
+  Helper visual para campos de formulario con label en micro-typo y línea amber animada.
+  Args: field (form field), label (string), col_span (opcional, default 1)
+{% endcomment %}
+<div class="group relative {% if col_span == 2 %}sm:col-span-2{% endif %}">
+    <label for="{{ field.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">{{ label }}</label>
+    {{ field }}
+    <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+    {% for error in field.errors %}<p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>{% endfor %}
+</div>

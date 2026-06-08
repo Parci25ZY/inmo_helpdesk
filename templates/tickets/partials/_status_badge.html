@@ -1,0 +1,16 @@
+{% comment %}
+  Badge de estado reutilizable. Recibe el ticket o el código de estado.
+  Args: estado (string TicketStatus), display (string label).
+{% endcomment %}
+<span class="inline-flex items-center px-2.5 py-1 text-[0.65rem] font-mono tracking-widest uppercase border whitespace-nowrap
+    {% if estado == 'CREADO_PENDIENTE_IA' %}border-blue-400 text-blue-700 bg-blue-50
+    {% elif estado == 'ANALIZADO_POR_IA' %}border-violet-400 text-violet-700 bg-violet-50
+    {% elif estado == 'PENDIENTE_VALIDACION' %}border-amber-400 text-amber-700 bg-amber-50
+    {% elif estado == 'ASIGNADO' %}border-cyan-400 text-cyan-700 bg-cyan-50
+    {% elif estado == 'EN_CAMINO' %}border-indigo-400 text-indigo-700 bg-indigo-50
+    {% elif estado == 'EN_PROGRESO' %}border-emerald-400 text-emerald-700 bg-emerald-50
+    {% elif estado == 'RESUELTO' %}border-zinc-900 text-white bg-zinc-900
+    {% elif estado == 'CANCELADO' %}border-red-300 text-red-600 bg-red-50
+    {% else %}border-zinc-300 text-zinc-500 bg-zinc-50{% endif %}">
+    {{ display }}
+</span>

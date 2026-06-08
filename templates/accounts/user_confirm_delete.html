@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Usuario — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <!-- ── Header ───────────────────────────────────────────────────────── -->
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-red-500 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    <a href="{% url 'user_list' %}" class="hover:text-red-400 transition-colors">Usuarios</a>
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    Eliminar
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                    ACCIÓN IRREVERSIBLE &nbsp;·&nbsp; MÓDULO ADMINISTRATIVO
+                </p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 flex items-start justify-center px-4 sm:px-6 py-16 lg:px-8">
+        <div class="w-full max-w-lg">
+
+            <!-- ── Tarjeta de advertencia ──────────────────────────── -->
+            <div class="bg-white border border-red-200 shadow-sm overflow-hidden">
+                <!-- Franja de peligro -->
+                <div class="h-1 bg-red-500"></div>
+                <div class="p-8">
+
+                    <!-- Icono de advertencia -->
+                    <div class="flex items-center justify-center w-14 h-14 bg-red-50 border border-red-200 mb-6">
+                        <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </div>
+
+                    <!-- Título -->
+                    <h2 class="text-xl font-bold text-zinc-900 tracking-tight mb-2">
+                        ¿Eliminar este usuario?
+                    </h2>
+                    <p class="text-sm text-zinc-500 leading-relaxed mb-6">
+                        Esta acción es <strong class="text-zinc-700">permanente e irreversible</strong>.
+                        El usuario perderá acceso inmediato al sistema y todos sus datos quedarán eliminados.
+                    </p>
+
+                    <!-- Datos del usuario a eliminar -->
+                    <div class="bg-zinc-50 border border-zinc-200 p-4 mb-8">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-3">Usuario a eliminar</p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 shrink-0 bg-zinc-900 flex items-center justify-center text-xs font-bold text-amber-400 uppercase tracking-wider select-none">
+                                {% if user_obj.first_name %}{{ user_obj.first_name|slice:":1" }}{{ user_obj.last_name|slice:":1" }}{% else %}{{ user_obj.email|slice:":2"|upper }}{% endif %}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-zinc-900">{{ user_obj.get_full_name }}</p>
+                                <p class="text-xs font-mono text-zinc-500">{{ user_obj.email }}</p>
+                            </div>
+                            <span class="ml-auto inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border
+                                {% if user_obj.role == 'ADMIN' %}border-amber-400 text-amber-700 bg-amber-50
+                                {% elif user_obj.role == 'TECNICO' %}border-indigo-400 text-indigo-700 bg-indigo-50
+                                {% else %}border-zinc-300 text-zinc-600 bg-zinc-50{% endif %}">
+                                {{ user_obj.get_role_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'user_list' %}"
+                           class="flex-1 inline-flex items-center justify-center border border-zinc-300 px-5 py-3 text-sm font-semibold tracking-wide uppercase text-zinc-700 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-200">
+                            Cancelar
+                        </a>
+                        <form method="POST" action="" class="flex-1">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="group w-full inline-flex items-center justify-between bg-red-600 text-white px-5 py-3 text-sm font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-red-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                                Sí, eliminar usuario
+                                <svg class="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Nota informativa -->
+            <p class="mt-4 text-center text-xs font-mono text-zinc-400 tracking-wide">
+                Esta operación quedará registrada en el historial del sistema.
+            </p>
+
+        </div>
+    </main>
+</div>
+{% endblock %}

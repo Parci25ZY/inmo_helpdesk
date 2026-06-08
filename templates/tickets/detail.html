@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ ticket.codigo }} · {{ ticket.titulo }} — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    <a href="{% url 'ticket_list' %}" class="hover:text-amber-400 transition-colors">Tickets</a>
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    <span class="font-mono text-amber-400">{{ ticket.codigo }}</span>
+                </h1>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8">
+
+        {% if messages %}
+        <div class="space-y-2 mb-6">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800{% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ── Cabecera del ticket ──────────────────────────────── -->
+        <div class="bg-white border border-zinc-200 mb-8 overflow-hidden">
+            <div class="h-1.5 {% if ticket.prioridad == 'CRITICA' %}bg-red-500{% elif ticket.prioridad == 'ALTA' %}bg-orange-400{% else %}bg-amber-400{% endif %}"></div>
+            <div class="p-6 sm:p-8">
+                <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <span class="font-mono text-xs font-bold text-zinc-400">{{ ticket.codigo }}</span>
+                            <span class="text-zinc-300">·</span>
+                            {% include 'tickets/partials/_status_badge.html' with estado=ticket.estado display=ticket.get_estado_display %}
+                            {% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}
+                            {% if ticket.categoria %}<span class="inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border border-zinc-300 text-zinc-600 bg-zinc-50">{{ ticket.get_categoria_display }}</span>{% endif %}
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight leading-tight">{{ ticket.titulo }}</h2>
+                        <p class="mt-3 text-sm text-zinc-500 leading-relaxed">
+                            <span class="font-mono">{{ ticket.creado_en|date:"d M Y · H:i" }}</span> · reportado por <strong class="text-zinc-700">{{ ticket.inquilino.get_full_name }}</strong>
+                        </p>
+                    </div>
+
+                    <!-- Cuadro de unidad -->
+                    <aside class="bg-zinc-50 border border-zinc-200 px-5 py-4 lg:w-72 shrink-0">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Ubicación</p>
+                        <p class="text-sm font-bold text-zinc-900">{{ ticket.unidad.edificio.nombre }}</p>
+                        <p class="text-xs font-mono text-zinc-500 mt-0.5">{{ ticket.unidad.edificio.codigo }}</p>
+                        <div class="mt-3 pt-3 border-t border-zinc-200 grid grid-cols-2 gap-2">
+                            <div>
+                                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Unidad</p>
+                                <p class="text-sm font-semibold text-zinc-900">#{{ ticket.unidad.numero }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Piso</p>
+                                <p class="text-sm font-semibold text-zinc-900">{{ ticket.unidad.piso }}</p>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-xs text-zinc-500">{{ ticket.unidad.get_tipo_display }}</p>
+                    </aside>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
+
+            <!-- ── Columna principal ─────────────────────────────── -->
+            <div class="space-y-8">
+
+                <!-- Descripción -->
+                <section class="bg-white border border-zinc-200 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Descripción del Inquilino</p>
+                    <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.descripcion }}</p>
+                </section>
+
+                <!-- Sugerencia IA -->
+                {% if ticket.ia_descripcion_tecnica or ticket.ia_categoria_sugerida %}
+                <section class="bg-white border border-violet-200 p-6">
+                    <div class="flex items-center justify-between border-b border-violet-100 pb-2 mb-4">
+                        <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-violet-600">Análisis IA · Gemini</p>
+                        {% if ticket.ia_confianza %}
+                        <span class="text-[0.65rem] font-mono text-violet-500">Confianza {{ ticket.ia_confianza|floatformat:2 }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                        {% if ticket.ia_categoria_sugerida %}
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Categoría sugerida</p>
+                            <p class="text-sm font-semibold text-zinc-900 mt-1">{{ ticket.ia_categoria_sugerida }}</p>
+                        </div>
+                        {% endif %}
+                        {% if ticket.ia_prioridad_sugerida %}
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Prioridad sugerida</p>
+                            <p class="text-sm font-semibold text-zinc-900 mt-1">{{ ticket.ia_prioridad_sugerida }}</p>
+                        </div>
+                        {% endif %}
+                        {% if ticket.ia_tecnico_sugerido %}
+                        <div class="sm:col-span-2">
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Técnico sugerido</p>
+                            <p class="text-sm font-semibold text-zinc-900 mt-1">{{ ticket.ia_tecnico_sugerido.get_full_name }}</p>
+                            {% if ticket.ia_razon_asignacion %}<p class="text-xs text-zinc-500 mt-1">{{ ticket.ia_razon_asignacion }}</p>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if ticket.ia_descripcion_tecnica %}
+                    <div class="mt-4 pt-4 border-t border-violet-100">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-2">Descripción técnica</p>
+                        <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.ia_descripcion_tecnica }}</p>
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <!-- Validación admin -->
+                {% if puede_validar %}
+                <section class="bg-amber-50 border-2 border-amber-300 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-700 mb-2">Acción requerida · Validación</p>
+                    <h3 class="text-lg font-bold text-amber-900 mb-4">Confirma o ajusta la sugerencia y asigna técnico</h3>
+                    <form method="POST" action="{% url 'ticket_validate' ticket.pk %}" class="space-y-4">
+                        {% csrf_token %}
+                        <div class="grid sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Categoría</label>
+                                {{ validate_form.categoria }}
+                            </div>
+                            <div>
+                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Prioridad</label>
+                                {{ validate_form.prioridad }}
+                            </div>
+                            <div>
+                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Técnico</label>
+                                {{ validate_form.tecnico }}
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Validar y Asignar →</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <!-- Resolución técnico -->
+                {% if puede_resolver %}
+                <section class="bg-emerald-50 border-2 border-emerald-300 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-emerald-700 mb-2">Cierre del ticket</p>
+                    <h3 class="text-lg font-bold text-emerald-900 mb-4">Marcar como resuelto</h3>
+                    <form method="POST" action="{% url 'ticket_resolve' ticket.pk %}" enctype="multipart/form-data" class="space-y-4">
+                        {% csrf_token %}
+                        <div>
+                            <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-emerald-700 mb-2">Notas de resolución</label>
+                            {{ resolution_form.notas_resolucion }}
+                        </div>
+                        <div>
+                            <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-emerald-700 mb-2">Evidencia fotográfica (opcional)</label>
+                            <input type="file" name="evidencias" multiple accept="image/*" class="block w-full text-sm text-zinc-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-emerald-700 file:text-white file:font-mono file:tracking-widest file:uppercase file:text-xs hover:file:bg-emerald-800 file:cursor-pointer">
+                        </div>
+                        <button type="submit" class="bg-emerald-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-emerald-800 transition-all">Cerrar Ticket ✓</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <!-- Notas de resolución (visible si ya resuelto) -->
+                {% if ticket.notas_resolucion %}
+                <section class="bg-white border border-emerald-200 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-emerald-600 border-b border-emerald-100 pb-2 mb-4">Notas de Resolución</p>
+                    <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.notas_resolucion }}</p>
+                    {% if ticket.resuelto_en %}<p class="mt-4 text-xs font-mono text-zinc-400">Resuelto el {{ ticket.resuelto_en|date:"d M Y · H:i" }}</p>{% endif %}
+                </section>
+                {% endif %}
+
+                <!-- Galería de evidencias -->
+                {% if evidencias_reporte or evidencias_resolucion %}
+                <section class="bg-white border border-zinc-200 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Evidencias</p>
+
+                    {% if evidencias_reporte %}
+                    <div class="mb-6">
+                        <p class="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-3">Reporte inicial · {{ evidencias_reporte|length }}</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {% for ev in evidencias_reporte %}
+                            <figure class="aspect-square bg-zinc-100 border border-zinc-200 overflow-hidden hover:border-amber-400 transition-colors group">
+                                <a href="{{ ev.archivo.url }}" target="_blank" rel="noopener">
+                                    <img src="{{ ev.archivo.url }}" alt="{{ ev.descripcion|default:'Evidencia inicial' }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                </a>
+                            </figure>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if evidencias_resolucion %}
+                    <div>
+                        <p class="text-xs font-mono uppercase tracking-widest text-emerald-600 mb-3">Resolución · {{ evidencias_resolucion|length }}</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {% for ev in evidencias_resolucion %}
+                            <figure class="aspect-square bg-zinc-100 border border-emerald-200 overflow-hidden hover:border-emerald-500 transition-colors group">
+                                <a href="{{ ev.archivo.url }}" target="_blank" rel="noopener">
+                                    <img src="{{ ev.archivo.url }}" alt="{{ ev.descripcion|default:'Evidencia de resolución' }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                </a>
+                            </figure>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <!-- Subir nueva evidencia -->
+                {% if not ticket.is_terminal %}
+                <section class="bg-white border border-zinc-200 p-6">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Añadir Evidencia</p>
+                    <form method="POST" action="{% url 'ticket_evidencia_upload' ticket.pk %}" enctype="multipart/form-data" class="space-y-4">
+                        {% csrf_token %}
+                        {{ evidencia_form.archivo }}
+                        {{ evidencia_form.descripcion }}
+                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Subir Archivo</button>
+                    </form>
+                </section>
+                {% endif %}
+
+            </div>
+
+            <!-- ── Sidebar ─────────────────────────────────────── -->
+            <aside class="space-y-6">
+
+                <!-- Asignaciones -->
+                <section class="bg-white border border-zinc-200 p-5">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Personas</p>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1.5">Reporta</p>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 bg-zinc-900 flex items-center justify-center text-[0.65rem] font-bold text-amber-400 uppercase">{{ ticket.inquilino.first_name|slice:":1" }}{{ ticket.inquilino.last_name|slice:":1" }}</div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-zinc-900 truncate">{{ ticket.inquilino.get_full_name }}</p>
+                                    <p class="text-[0.65rem] font-mono text-zinc-400 truncate">{{ ticket.inquilino.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1.5">Atiende</p>
+                            {% if ticket.tecnico %}
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 bg-indigo-700 flex items-center justify-center text-[0.65rem] font-bold text-white uppercase">{{ ticket.tecnico.first_name|slice:":1" }}{{ ticket.tecnico.last_name|slice:":1" }}</div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-zinc-900 truncate">{{ ticket.tecnico.get_full_name }}</p>
+                                    <p class="text-[0.65rem] font-mono text-zinc-400 truncate">{{ ticket.tecnico.email }}</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-xs text-amber-700 font-medium">Sin asignar</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Acciones de transición -->
+                {% if transiciones_disponibles %}
+                <section class="bg-zinc-900 text-white p-5">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-400 border-b border-zinc-700 pb-2 mb-4">Acciones disponibles</p>
+                    <div class="space-y-2">
+                        {% for destino in transiciones_disponibles %}
+                            {% if destino == 'PENDIENTE_VALIDACION' and request.user.is_admin %}{% comment %}Skip — la validación se hace por el form{% endcomment %}
+                            {% elif destino == 'ASIGNADO' and request.user.is_admin %}{% comment %}Skip — la asignación es vía validate{% endcomment %}
+                            {% elif destino == 'RESUELTO' and puede_resolver %}{% comment %}Skip — usar form de resolución{% endcomment %}
+                            {% else %}
+                            <form method="POST" action="{% url 'ticket_transition' ticket.pk destino %}">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-mono tracking-widest uppercase border border-zinc-700 text-zinc-300 hover:bg-amber-400 hover:text-zinc-900 hover:border-amber-400 transition-all">
+                                    <span>→ {{ destino|cut:"_"|capfirst }}</span>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                <!-- Timeline / historial -->
+                <section class="bg-white border border-zinc-200 p-5">
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Historial de Estados</p>
+                    <ol class="relative space-y-4 ml-4 border-l-2 border-zinc-100">
+                        {% for h in ticket.historial.all %}
+                        <li class="relative pl-5">
+                            <span class="absolute -left-[0.45rem] top-1 w-3 h-3 rounded-full {% if forloop.last %}bg-amber-400 ring-4 ring-amber-100{% else %}bg-zinc-300{% endif %}"></span>
+                            <p class="text-xs font-bold text-zinc-900">
+                                {% if h.estado_anterior %}{{ h.get_estado_anterior_display }} →{% endif %}
+                                {{ h.get_estado_nuevo_display }}
+                            </p>
+                            <time class="block text-[0.65rem] font-mono text-zinc-400 mt-0.5">{{ h.creado_en|date:"d M Y · H:i" }}</time>
+                            {% if h.actor %}<p class="text-xs text-zinc-500 mt-1">por {{ h.actor.get_full_name|default:h.actor.email }}</p>{% endif %}
+                            {% if h.nota %}<p class="text-xs text-zinc-600 mt-1 italic">"{{ h.nota }}"</p>{% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="pl-5 text-xs text-zinc-400">Sin movimientos registrados.</li>
+                        {% endfor %}
+                    </ol>
+                </section>
+
+            </aside>
+        </div>
+    </main>
+</div>
+{% endblock %}

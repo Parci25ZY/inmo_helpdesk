@@ -1,0 +1,43 @@
+<div class="chatbot-toolbar">
+    <span class="chatbot-toolbar__label">Conversación</span>
+    <button type="button" class="chatbot-new-session chatbot-toolbar__link">Nueva</button>
+</div>
+
+<div class="chatbot-body">
+    <div class="chatbot-messages" role="log" aria-live="polite">
+        <div class="chatbot-welcome chatbot-msg-block">
+            <p class="chatbot-meta">Asistente</p>
+            <div class="chatbot-bubble chatbot-bubble--assistant">
+                <p>
+                    Hola{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}. Resuelvo dudas de mantenimiento con la base de conocimiento. Solo sugiero ticket si hace falta un técnico.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+                <button type="button" class="chatbot-suggestion" data-prompt="¿Cómo cierro la llave de paso de agua?">Llave de paso</button>
+                <button type="button" class="chatbot-suggestion" data-prompt="Se saltó el disyuntor, ¿qué debo hacer?">Disyuntor</button>
+                <button type="button" class="chatbot-suggestion" data-prompt="¿Cuál es el horario de visitas técnicas?">Horarios</button>
+                <button type="button" class="chatbot-suggestion" data-prompt="Tengo una fuga leve en el lavamanos, ¿qué hago?">Fuga leve</button>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" class="chatbot-scroll-bottom hidden" aria-label="Ir al último mensaje">↓ Recientes</button>
+
+    <div class="chatbot-escalate hidden">
+        <p class="chatbot-escalate__title">Puede requerir técnico</p>
+        <p class="chatbot-escalate-text chatbot-escalate__text"></p>
+        <a href="{% url 'ticket_create' %}" class="chatbot-escalate-link chatbot-escalate__cta">Crear ticket →</a>
+    </div>
+</div>
+
+<footer class="chatbot-footer">
+    <form class="chatbot-form flex gap-2 items-end">
+        {% csrf_token %}
+        <label class="sr-only">Consulta</label>
+        <textarea rows="1" class="chatbot-input flex-1" maxlength="4000" placeholder="Buscar ayuda o describir tu situación…"></textarea>
+        <button type="submit" class="chatbot-send" aria-label="Enviar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
+        </button>
+    </form>
+    <p class="chatbot-footnote">Emergencias: 911</p>
+</footer>

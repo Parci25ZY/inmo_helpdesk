@@ -1,34 +1,43 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser
-from django.utils.translation import gettext_lazy as _
+from .models import CustomUser, EmailVerificationCode
+from .forms import UserCreateForm, UserEditForm
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    """
-    Configuración profesional del panel de administración para usuarios.
-    """
-    # Columnas que verás en el listado principal
-    list_display = ('username', 'email', 'get_full_name', 'rol', 'is_staff', 'date_joined')
+    # Usar los formularios personalizados estilizados
+    add_form = UserCreateForm
+    form = UserEditForm
+    model = CustomUser
     
-    # Filtros laterales para encontrar gente rápido
-    list_filter = ('rol', 'is_staff', 'is_superuser', 'is_active')
+    # Configuración de la lista
+    list_display = ['email', 'first_name', 'last_name', 'role', 'is_active', 'is_staff', 'date_joined']
+    list_filter = ['role', 'is_active', 'is_staff', 'date_joined']
+    search_fields = ['email', 'first_name', 'last_name', 'phone']
+    ordering = ['-date_joined']
     
-    # Buscador por campos clave
-    search_fields = ('username', 'first_name', 'last_name', 'email')
-    
-    # Orden predeterminado (más recientes primero)
-    ordering = ('-date_joined',)
-
-    # Organización de los formularios de edición/creación
-    fieldsets = UserAdmin.fieldsets + (
-        (_('Información de InmoHelpdesk'), {'fields': ('rol', 'telefono')}),
+    # Organización de los campos al editar
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Información Personal', {'fields': ('first_name', 'last_name', 'phone')}),
+        ('Rol y Permisos', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Fechas Importantes', {'fields': ('date_joined', 'last_login')}),
     )
     
-    # Formulario para crear usuarios nuevos
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        (_('Información de InmoHelpdesk'), {
+    # Organización de los campos al crear un nuevo usuario
+    add_fieldsets = (
+        (None, {
             'classes': ('wide',),
-            'fields': ('rol', 'telefono'),
+            'fields': ('email', 'first_name', 'last_name', 'phone', 'role', 'is_staff', 'is_active'),
         }),
     )
+    
+    readonly_fields = ['date_joined', 'last_login']
+
+
+@admin.register(EmailVerificationCode)
+class EmailVerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ('email', 'code', 'purpose', 'is_used', 'verified_at', 'expires_at', 'created_at')
+    list_filter = ('purpose', 'is_used')
+    search_fields = ('email', 'code')
+    readonly_fields = ('created_at', 'verified_at')

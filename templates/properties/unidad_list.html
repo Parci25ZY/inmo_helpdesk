@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Unidades — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    Unidades
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">CATÁLOGO DE ESPACIOS &nbsp;·&nbsp; {{ page_obj.paginator.count }} REGISTRO{{ page_obj.paginator.count|pluralize }}</p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-8">
+
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800{% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-5 gap-4">
+            <div>
+                <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">Inventario de Unidades</p>
+                <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Departamentos y Locales</h2>
+            </div>
+            <a href="{% url 'unidad_create' %}" class="group inline-flex items-center justify-between bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] shrink-0">
+                Nueva Unidad
+                <svg class="w-4 h-4 ml-3 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M12 5v14m7-7H5"/></svg>
+            </a>
+        </div>
+
+        <form method="GET" action="" class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-3">
+            <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Buscar por número, edificio o inquilino…" class="w-full pl-10 pr-4 py-2.5 border border-zinc-200 bg-white text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 transition-colors">
+            </div>
+            <select name="edificio" class="border border-zinc-200 bg-white text-sm font-medium text-zinc-700 px-3 py-2.5 outline-none focus:border-zinc-900 min-w-[180px]">
+                <option value="">Todos los edificios</option>
+                {% for ed in edificios %}<option value="{{ ed.id }}" {% if edificio_filtrado == ed.id|stringformat:"s" %}selected{% endif %}>{{ ed.nombre }}</option>{% endfor %}
+            </select>
+            <select name="ocupacion" class="border border-zinc-200 bg-white text-sm font-medium text-zinc-700 px-3 py-2.5 outline-none focus:border-zinc-900">
+                <option value="">Todas</option>
+                <option value="ocupadas" {% if ocupacion_filtrada == 'ocupadas' %}selected{% endif %}>Ocupadas</option>
+                <option value="libres" {% if ocupacion_filtrada == 'libres' %}selected{% endif %}>Libres</option>
+            </select>
+            <button type="submit" class="px-5 py-2.5 bg-zinc-900 text-white text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Filtrar</button>
+        </form>
+
+        <div class="bg-white border border-zinc-200 overflow-x-auto shadow-sm">
+            <table class="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
+                <thead class="bg-zinc-50 border-b border-zinc-200">
+                    <tr>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Edificio</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Unidad</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Tipo</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Área</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Inquilino</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100">
+                    {% for unidad in unidades %}
+                    <tr class="hover:bg-zinc-50/80 transition-colors group">
+                        <td class="py-4 px-5">
+                            <p class="text-sm font-semibold text-zinc-900">{{ unidad.edificio.nombre }}</p>
+                            <p class="text-xs font-mono text-zinc-400 mt-0.5">{{ unidad.edificio.codigo }}</p>
+                        </td>
+                        <td class="py-4 px-5">
+                            <span class="font-mono text-sm font-bold text-zinc-900">#{{ unidad.numero }}</span>
+                            <span class="block text-xs text-zinc-400 mt-0.5">Piso {{ unidad.piso }}</span>
+                        </td>
+                        <td class="py-4 px-5">
+                            <span class="inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border border-zinc-300 text-zinc-600 bg-zinc-50">{{ unidad.get_tipo_display }}</span>
+                        </td>
+                        <td class="py-4 px-5">
+                            <span class="text-sm text-zinc-700">{% if unidad.area_m2 %}{{ unidad.area_m2 }} m²{% else %}—{% endif %}</span>
+                        </td>
+                        <td class="py-4 px-5">
+                            {% if unidad.inquilino %}
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 bg-zinc-900 flex items-center justify-center text-[0.65rem] font-bold text-amber-400 uppercase shrink-0">{{ unidad.inquilino.first_name|slice:":1" }}{{ unidad.inquilino.last_name|slice:":1" }}</div>
+                                <div>
+                                    <p class="text-sm text-zinc-700 font-medium">{{ unidad.inquilino.get_full_name }}</p>
+                                    <p class="text-[0.65rem] font-mono text-zinc-400">{{ unidad.inquilino.email }}</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 text-xs text-amber-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                Sin asignar
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-5 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'unidad_edit' unidad.pk %}" title="Editar" class="p-1.5 border border-zinc-200 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 transition-all"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2.121 2.121 0 013 3L12 16H9v-3z"/></svg></a>
+                                <a href="{% url 'unidad_delete' unidad.pk %}" title="Eliminar" class="p-1.5 border border-zinc-200 text-zinc-400 hover:border-red-500 hover:text-red-600 transition-all"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-16 px-6 text-center">
+                            <p class="text-sm font-semibold text-zinc-500">No hay unidades que coincidan con los filtros.</p>
+                            <a href="{% url 'unidad_create' %}" class="mt-3 inline-block text-xs font-mono tracking-widest uppercase text-amber-600 hover:underline">Registrar la primera →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="flex items-center justify-between border-t border-zinc-200 pt-5">
+            <p class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if edificio_filtrado %}&edificio={{ edificio_filtrado }}{% endif %}{% if ocupacion_filtrada %}&ocupacion={{ ocupacion_filtrada }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900">← Anterior</a>{% endif %}
+                <span class="px-3 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-bold">{{ page_obj.number }}</span>
+                {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if edificio_filtrado %}&edificio={{ edificio_filtrado }}{% endif %}{% if ocupacion_filtrada %}&ocupacion={{ ocupacion_filtrada }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900">Siguiente →</a>{% endif %}
+            </div>
+        </nav>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

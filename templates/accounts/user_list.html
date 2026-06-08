@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Usuarios — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <!-- ── Header de control administrativo ─────────────────────────────── -->
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+            </svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    Gestión de Usuarios
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                    MÓDULO ADMINISTRATIVO &nbsp;·&nbsp; {{ request.user.email }}
+                </p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-8">
+
+        <!-- ── Mensajes del sistema ─────────────────────────────────────── -->
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium
+                {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800
+                {% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800
+                {% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">
+                {% if message.tags == 'success' %}
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                {% else %}
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                {% endif %}
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ── Encabezado de sección con CTA ───────────────────────────── -->
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-5 gap-4">
+            <div>
+                <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">
+                    Administración del Sistema
+                </p>
+                <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Directorio de Usuarios</h2>
+                <p class="text-sm text-zinc-500 mt-1">
+                    {{ page_obj.paginator.count }} usuario{{ page_obj.paginator.count|pluralize }} registrado{{ page_obj.paginator.count|pluralize }}
+                </p>
+            </div>
+            <a href="{% url 'user_create' %}"
+               class="group inline-flex items-center justify-between bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] shrink-0">
+                Nuevo Usuario
+                <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="square" stroke-linejoin="miter" d="M12 5v14m7-7H5"/>
+                </svg>
+            </a>
+        </div>
+
+        <!-- ── Filtros y búsqueda ────────────────────────────────────────── -->
+        <form method="GET" action="" class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                </svg>
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ search_query }}"
+                    placeholder="Buscar por nombre o correo…"
+                    class="w-full pl-10 pr-4 py-2.5 border border-zinc-200 bg-white text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 transition-colors duration-200">
+            </div>
+            <div class="relative">
+                <select name="role"
+                    class="appearance-none border border-zinc-200 bg-white text-sm font-medium text-zinc-700 pl-3 pr-8 py-2.5 outline-none focus:border-zinc-900 transition-colors duration-200 min-w-[160px]">
+                    <option value="">Todos los roles</option>
+                    {% for value, label in role_choices %}
+                    <option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <button type="submit"
+                class="px-5 py-2.5 bg-zinc-900 text-white text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all duration-200">
+                Filtrar
+            </button>
+            {% if search_query or role_filter %}
+            <a href="{% url 'user_list' %}"
+               class="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-xs font-bold tracking-widest uppercase hover:border-zinc-900 hover:text-zinc-900 transition-all duration-200 text-center">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+
+        <!-- ── Tabla de usuarios ─────────────────────────────────────────── -->
+        <div class="bg-white border border-zinc-200 overflow-x-auto shadow-sm">
+            <table class="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
+                <thead class="bg-zinc-50 border-b border-zinc-200">
+                    <tr>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-12">#</th>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Usuario</th>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-32">Rol</th>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28">Estado</th>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-40">Registrado</th>
+                        <th scope="col" class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100">
+                    {% for user in page_obj %}
+                    <tr class="hover:bg-zinc-50/80 transition-colors group">
+                        <td class="py-4 px-5">
+                            <span class="font-mono text-xs text-zinc-400">{{ forloop.counter0|add:page_obj.start_index }}</span>
+                        </td>
+                        <td class="py-4 px-5">
+                            <div class="flex items-center gap-3">
+                                <!-- Avatar de iniciales -->
+                                <div class="w-9 h-9 shrink-0 bg-zinc-900 flex items-center justify-center text-[0.65rem] font-bold text-amber-400 uppercase tracking-wider select-none">
+                                    {% if user.first_name %}{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}{% else %}{{ user.email|slice:":2"|upper }}{% endif %}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-zinc-900 group-hover:text-amber-600 transition-colors">
+                                        {{ user.get_full_name }}
+                                    </p>
+                                    <p class="text-xs font-mono text-zinc-400 mt-0.5">{{ user.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-5">
+                            <span class="inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border
+                                {% if user.role == 'ADMIN' %}border-amber-400 text-amber-700 bg-amber-50
+                                {% elif user.role == 'TECNICO' %}border-indigo-400 text-indigo-700 bg-indigo-50
+                                {% else %}border-zinc-300 text-zinc-600 bg-zinc-50{% endif %}">
+                                {{ user.get_role_display }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-5">
+                            {% if user.is_active %}
+                            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Activo
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+                                <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                                Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-5">
+                            <time class="text-xs font-mono text-zinc-400">{{ user.date_joined|date:"d.m.Y" }}</time>
+                        </td>
+                        <td class="py-4 px-5 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'user_edit' user.id %}"
+                                   title="Editar usuario"
+                                   class="p-1.5 border border-zinc-200 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-150">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2.121 2.121 0 013 3L12 16H9v-3z"/>
+                                    </svg>
+                                </a>
+                                {% if user.id != request.user.id %}
+                                <a href="{% url 'user_delete' user.id %}"
+                                   title="Eliminar usuario"
+                                   class="p-1.5 border border-zinc-200 text-zinc-400 hover:border-red-500 hover:text-red-600 transition-all duration-150">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </a>
+                                {% else %}
+                                <span class="p-1.5 border border-transparent text-zinc-200 cursor-not-allowed" title="No puedes eliminar tu propia cuenta">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-16 px-6 text-center">
+                            <svg class="w-12 h-12 text-zinc-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <p class="text-sm font-semibold text-zinc-500">No se encontraron usuarios con los filtros aplicados.</p>
+                            <a href="{% url 'user_list' %}" class="mt-3 inline-block text-xs font-mono tracking-widest uppercase text-amber-600 hover:underline">Limpiar filtros</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ── Paginación ──────────────────────────────────────────────── -->
+        {% if page_obj.has_other_pages %}
+        <nav class="flex items-center justify-between border-t border-zinc-200 pt-5" aria-label="Paginación">
+            <p class="text-xs font-mono text-zinc-400 uppercase tracking-widest">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </p>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}"
+                   class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-150">
+                    ← Anterior
+                </a>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <span class="px-3 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-bold">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}"
+                       class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-150">
+                        {{ num }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}"
+                   class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-150">
+                    Siguiente →
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+        {% endif %}
+
+    </main>
+</div>
+{% endblock %}

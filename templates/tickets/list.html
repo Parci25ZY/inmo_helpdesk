@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tickets — InmoHelpdesk{% endblock %}
+
+{% block extra_head %}
+{% if chatbot_habilitado %}
+<link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
+<script src="{% static 'js/chatbot.js' %}" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4 shrink-0">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">InmoHelpdesk <span class="font-normal text-zinc-600 mx-1.5">/</span> Tickets</h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">CENTRO DE INCIDENCIAS &nbsp;·&nbsp; ROL: {{ request.user.get_role_display }}</p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-8 overflow-x-hidden {% if chatbot_habilitado %}tickets-page--with-chat{% else %}max-w-7xl{% endif %}">
+
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800{% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ── KPIs ───────────────────────────────────────────────── -->
+        <section aria-label="Indicadores" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <article class="bg-white border border-zinc-200 px-5 py-4">
+                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Total</p>
+                <p class="text-3xl font-black text-zinc-900 tracking-tighter mt-1">{{ kpi_total|stringformat:"02d" }}</p>
+            </article>
+            <article class="bg-white border border-amber-200 px-5 py-4">
+                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-600">Pendientes</p>
+                <p class="text-3xl font-black text-amber-700 tracking-tighter mt-1">{{ kpi_pendientes|stringformat:"02d" }}</p>
+            </article>
+            <article class="bg-white border border-indigo-200 px-5 py-4">
+                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-indigo-600">En proceso</p>
+                <p class="text-3xl font-black text-indigo-700 tracking-tighter mt-1">{{ kpi_en_proceso|stringformat:"02d" }}</p>
+            </article>
+            <article class="bg-zinc-900 text-white px-5 py-4">
+                <p class="text-[0.65rem] font-mono uppercase tracking-widest text-amber-400">Resueltos</p>
+                <p class="text-3xl font-black tracking-tighter mt-1">{{ kpi_resueltos|stringformat:"02d" }}</p>
+            </article>
+        </section>
+
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-5 gap-4">
+            <div>
+                <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">Bandeja Operativa</p>
+                <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Listado de Tickets</h2>
+                {% if chatbot_habilitado %}
+                <p class="text-xs text-zinc-500 mt-1 font-mono hidden min-[1200px]:block">Asistente IA a la derecha · consulta antes de abrir ticket</p>
+                {% endif %}
+            </div>
+            {% if puede_crear %}
+            <a href="{% url 'ticket_create' %}" class="group inline-flex items-center justify-between bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98]">
+                Reportar Incidencia
+                <svg class="w-4 h-4 ml-3 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M12 5v14m7-7H5"/></svg>
+            </a>
+            {% endif %}
+        </div>
+
+        {% if chatbot_habilitado %}
+        <div class="tickets-workspace">
+        <div class="tickets-workspace__main">
+        {% endif %}
+
+        <form method="GET" action="" class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-3">
+            <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Buscar por título, unidad…" class="w-full pl-10 pr-4 py-2.5 border border-zinc-200 bg-white text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 transition-colors">
+            </div>
+            <select name="estado" class="border border-zinc-200 bg-white text-sm font-medium text-zinc-700 px-3 py-2.5 outline-none focus:border-zinc-900 min-w-[200px]">
+                <option value="">Todos los estados</option>
+                {% for value, label in estados %}<option value="{{ value }}" {% if estado_filtrado == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <select name="prioridad" class="border border-zinc-200 bg-white text-sm font-medium text-zinc-700 px-3 py-2.5 outline-none focus:border-zinc-900">
+                <option value="">Todas</option>
+                <option value="BAJA" {% if prioridad_filtrada == 'BAJA' %}selected{% endif %}>Baja</option>
+                <option value="MEDIA" {% if prioridad_filtrada == 'MEDIA' %}selected{% endif %}>Media</option>
+                <option value="ALTA" {% if prioridad_filtrada == 'ALTA' %}selected{% endif %}>Alta</option>
+                <option value="CRITICA" {% if prioridad_filtrada == 'CRITICA' %}selected{% endif %}>Crítica</option>
+            </select>
+            <button type="submit" class="px-5 py-2.5 bg-zinc-900 text-white text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Filtrar</button>
+        </form>
+
+        <div class="bg-white border border-zinc-200 overflow-x-auto shadow-sm">
+            <table class="w-full text-left border-collapse min-w-[900px]">
+                <thead class="bg-zinc-50 border-b border-zinc-200">
+                    <tr>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28">Código</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500">Incidencia</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-40">Unidad</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Estado</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28">Prioridad</th>
+                        {% if request.user.is_admin or request.user.is_tecnico %}
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Reportado por</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100">
+                    {% for ticket in tickets %}
+                    <tr class="hover:bg-zinc-50/80 transition-colors group cursor-pointer" onclick="window.location='{% url 'ticket_detail' ticket.pk %}'">
+                        <td class="py-4 px-5 align-top">
+                            <p class="font-mono text-xs font-bold text-zinc-900">{{ ticket.codigo }}</p>
+                            <time class="block mt-1 text-[0.65rem] text-zinc-400 font-mono">{{ ticket.creado_en|date:"d.m.y H:i" }}</time>
+                        </td>
+                        <td class="py-4 px-5 align-top">
+                            <p class="text-sm font-semibold text-zinc-900 group-hover:text-amber-600 transition-colors">{{ ticket.titulo }}</p>
+                            {% if ticket.categoria %}<p class="text-[0.65rem] font-mono text-zinc-400 uppercase tracking-widest mt-1">{{ ticket.get_categoria_display }}</p>{% endif %}
+                        </td>
+                        <td class="py-4 px-5 align-top">
+                            <p class="text-xs text-zinc-700 font-medium">{{ ticket.unidad.edificio.nombre }}</p>
+                            <p class="text-xs font-mono text-zinc-400">#{{ ticket.unidad.numero }} · P{{ ticket.unidad.piso }}</p>
+                        </td>
+                        <td class="py-4 px-5 align-top">
+                            {% include 'tickets/partials/_status_badge.html' with estado=ticket.estado display=ticket.get_estado_display %}
+                        </td>
+                        <td class="py-4 px-5 align-top">
+                            {% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}
+                        </td>
+                        {% if request.user.is_admin or request.user.is_tecnico %}
+                        <td class="py-4 px-5 align-top">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 bg-zinc-200 flex items-center justify-center text-[0.65rem] font-bold text-zinc-600 uppercase shrink-0">{{ ticket.inquilino.first_name|slice:":1" }}{{ ticket.inquilino.last_name|slice:":1" }}</div>
+                                <span class="text-sm text-zinc-700 truncate max-w-[140px]">{{ ticket.inquilino.get_full_name|default:ticket.inquilino.email }}</span>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-16 px-6 text-center">
+                            <svg class="w-12 h-12 text-zinc-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <p class="text-sm font-semibold text-zinc-500">{% if estado_filtrado or prioridad_filtrada or search_query %}No hay tickets que coincidan con los filtros.{% else %}Aún no hay tickets en tu bandeja.{% endif %}</p>
+                            {% if puede_crear %}<a href="{% url 'ticket_create' %}" class="mt-3 inline-block text-xs font-mono tracking-widest uppercase text-amber-600 hover:underline">Reportar el primero →</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="flex items-center justify-between border-t border-zinc-200 pt-5">
+            <p class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if estado_filtrado %}&estado={{ estado_filtrado }}{% endif %}{% if prioridad_filtrada %}&prioridad={{ prioridad_filtrada }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900">← Anterior</a>{% endif %}
+                <span class="px-3 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-bold">{{ page_obj.number }}</span>
+                {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if estado_filtrado %}&estado={{ estado_filtrado }}{% endif %}{% if prioridad_filtrada %}&prioridad={{ prioridad_filtrada }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900">Siguiente →</a>{% endif %}
+            </div>
+        </nav>
+        {% endif %}
+
+        {% if chatbot_habilitado %}
+        </div>
+        {% include 'partials/_chatbot_panel.html' %}
+        </div>
+        {% endif %}
+
+    </main>
+</div>
+{% endblock %}

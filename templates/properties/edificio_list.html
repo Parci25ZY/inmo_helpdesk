@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Edificios — InmoHelpdesk{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col bg-zinc-50">
+
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+        <div class="flex items-center gap-4">
+            <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+            </svg>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">
+                    InmoHelpdesk
+                    <span class="font-normal text-zinc-600 mx-1.5">/</span>
+                    Edificios
+                </h1>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                    INVENTARIO INMOBILIARIO &nbsp;·&nbsp; {{ request.user.email }}
+                </p>
+            </div>
+        </div>
+        {% include 'partials/_nav.html' %}
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-8">
+
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div role="alert" class="flex items-center gap-3 px-4 py-3 border text-sm font-medium
+                {% if message.tags == 'success' %}bg-emerald-50 border-emerald-300 text-emerald-800
+                {% elif message.tags == 'error' %}bg-red-50 border-red-300 text-red-800
+                {% else %}bg-zinc-100 border-zinc-300 text-zinc-800{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-zinc-900 pb-5 gap-4">
+            <div>
+                <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">Catálogo de Inmuebles</p>
+                <h2 class="text-2xl font-bold text-zinc-900 tracking-tight">Edificios Registrados</h2>
+                <p class="text-sm text-zinc-500 mt-1">{{ page_obj.paginator.count }} edificio{{ page_obj.paginator.count|pluralize }} en la plataforma</p>
+            </div>
+            <a href="{% url 'edificio_create' %}"
+               class="group inline-flex items-center justify-between bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] shrink-0">
+                Nuevo Edificio
+                <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="square" stroke-linejoin="miter" d="M12 5v14m7-7H5"/>
+                </svg>
+            </a>
+        </div>
+
+        <form method="GET" action="" class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+                </svg>
+                <input type="text" name="search" value="{{ search_query }}"
+                    placeholder="Buscar por nombre, código o dirección…"
+                    class="w-full pl-10 pr-4 py-2.5 border border-zinc-200 bg-white text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 transition-colors duration-200">
+            </div>
+            <button type="submit" class="px-5 py-2.5 bg-zinc-900 text-white text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all duration-200">Filtrar</button>
+            {% if search_query %}
+            <a href="{% url 'edificio_list' %}" class="px-5 py-2.5 border border-zinc-200 text-zinc-600 text-xs font-bold tracking-widest uppercase hover:border-zinc-900 hover:text-zinc-900 transition-all duration-200 text-center">Limpiar</a>
+            {% endif %}
+        </form>
+
+        <!-- Grid de edificios -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for edificio in edificios %}
+            <article class="bg-white border border-zinc-200 hover:border-amber-400 transition-all duration-200 overflow-hidden group">
+                <!-- Franja superior con código -->
+                <div class="bg-zinc-950 text-white px-5 py-3 flex items-center justify-between">
+                    <span class="font-mono text-xs tracking-widest text-amber-400">{{ edificio.codigo }}</span>
+                    {% if edificio.activo %}
+                    <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono tracking-widest text-emerald-400 uppercase">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Activo
+                    </span>
+                    {% else %}
+                    <span class="text-[0.65rem] font-mono tracking-widest text-zinc-500 uppercase">Inactivo</span>
+                    {% endif %}
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-zinc-900 tracking-tight group-hover:text-amber-600 transition-colors">{{ edificio.nombre }}</h3>
+                        <p class="text-xs text-zinc-500 mt-1 flex items-center gap-1.5">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ edificio.direccion }}, {{ edificio.ciudad }}
+                        </p>
+                    </div>
+                    <!-- Métricas -->
+                    <div class="grid grid-cols-2 gap-2 pt-3 border-t border-zinc-100">
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Unidades</p>
+                            <p class="text-2xl font-black text-zinc-900 tracking-tighter">{{ edificio.unidades_total|stringformat:"02d" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Libres</p>
+                            <p class="text-2xl font-black text-amber-600 tracking-tighter">{{ edificio.unidades_libres|stringformat:"02d" }}</p>
+                        </div>
+                    </div>
+                    <!-- Acciones -->
+                    <div class="flex items-center gap-2 pt-3 border-t border-zinc-100">
+                        <a href="{% url 'unidad_list' %}?edificio={{ edificio.id }}" class="flex-1 text-center text-[0.65rem] font-mono tracking-widest uppercase text-zinc-600 hover:text-amber-600 py-2 border border-zinc-200 hover:border-amber-400 transition-colors">Ver Unidades</a>
+                        <a href="{% url 'edificio_edit' edificio.pk %}" title="Editar" class="p-2 border border-zinc-200 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2.121 2.121 0 013 3L12 16H9v-3z"/></svg>
+                        </a>
+                        <a href="{% url 'edificio_delete' edificio.pk %}" title="Eliminar" class="p-2 border border-zinc-200 text-zinc-400 hover:border-red-500 hover:text-red-600 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </article>
+            {% empty %}
+            <div class="md:col-span-2 lg:col-span-3 bg-white border border-zinc-200 py-16 text-center">
+                <svg class="w-12 h-12 text-zinc-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <p class="text-sm font-semibold text-zinc-500">Aún no hay edificios registrados.</p>
+                <a href="{% url 'edificio_create' %}" class="mt-4 inline-block text-xs font-mono tracking-widest uppercase text-amber-600 hover:underline">Registrar el primero →</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="flex items-center justify-between border-t border-zinc-200 pt-5">
+            <p class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</p>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-all">← Anterior</a>
+                {% endif %}
+                <span class="px-3 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-xs font-bold">{{ page_obj.number }}</span>
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 border border-zinc-200 text-xs font-bold text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 transition-all">Siguiente →</a>
+                {% endif %}
+            </div>
+        </nav>
+        {% endif %}
+
+    </main>
+</div>
+{% endblock %}
