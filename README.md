@@ -61,6 +61,8 @@ Archivos relevantes
 1) Trae los cambios del repositorio remoto al repositorio local
 
 ```bash
+git status
+git checkout dev
 git pull origin dev
 ```
 
