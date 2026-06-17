@@ -58,7 +58,13 @@ Archivos relevantes
 - Dependencias Python: [requirements.txt](requirements.txt)
 - Docker Compose (Postgres, Redis): [docker-compose.yml](docker-compose.yml)
 
-1) Clonar y preparar entorno Python
+1) Trae los cambios del repositorio remoto al repositorio local
+
+```bash
+git pull origin dev
+```
+
+2) Clonar y preparar entorno Python
 
 ```bash
 git clone <repo>
@@ -69,7 +75,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-2) Configurar variables de entorno
+3) Configurar variables de entorno
 - El repositorio contiene un archivo `.env` unificado en la raíz. Ábrelo y edita los valores sensibles antes de ejecutar la aplicación:
 
 ```bash
@@ -89,7 +95,7 @@ cp .env .env.local
 
 Nota sobre Docker: si usas `docker-compose up` (ver abajo), actualiza `DB_HOST` a `db` y `CELERY_BROKER_URL` a `redis://redis:6379/0` en `.env` (los nombres coinciden con los servicios del `docker-compose.yml`).
 
-3) Iniciar dependencias con Docker Compose (opcional)
+4) Iniciar dependencias con Docker Compose (opcional)
 
 Si no quieres instalar Postgres/Redis localmente, usa Docker Compose:
 
@@ -101,7 +107,7 @@ Esto levanta:
 - Servicio `db` (Postgres) con usuario/clave según `docker-compose.yml`.
 - Servicio `redis` (Redis).
 
-4) Migraciones y usuario administrador
+5) Migraciones y usuario administrador
 
 ```bash
 source .venv/bin/activate
@@ -109,7 +115,7 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-5) Tailwind / assets estáticos (opcional pero recomendado para desarrollo frontend)
+6) Tailwind / assets estáticos (opcional pero recomendado para desarrollo frontend)
 
 Instalar dependencias de Node y compilar CSS:
 
@@ -125,7 +131,7 @@ cd -
 
 Si no vas a tocar estilos, esto no es obligatorio para arrancar el backend.
 
-6) Ejecutar la aplicación
+7) Ejecutar la aplicación
 
 En desarrollo (con el entorno Python activo y `.env` configurado):
 
@@ -133,7 +139,7 @@ En desarrollo (con el entorno Python activo y `.env` configurado):
 python manage.py runserver
 ```
 
-7) Ejecutar Celery (tareas asíncronas)
+8) Ejecutar Celery (tareas asíncronas)
 
 En un terminal aparte (con el `venv` activado):
 
@@ -145,18 +151,18 @@ Notas:
 - Si `CELERY_TASK_ALWAYS_EAGER=true` (en `.env`), las tareas se ejecutan en el proceso Django (útil para pruebas/desarrollo sin worker).
 - El backend de resultados está configurado con `django-celery-results` (usa la base de datos).
 
-8) Ejecutar pruebas
+9) Ejecutar pruebas
 
 ```bash
 pytest
 ```
 
-9) Producción / despliegue (puntos clave)
+10) Producción / despliegue (puntos clave)
 - Asegúrate de configurar `DEBUG=False`, `SECRET_KEY` seguro y `ALLOWED_HOSTS` apropiado en `.env`.
 - Ejecutar `python manage.py collectstatic --noinput` antes de servir estáticos en producción.
 - Revisar `EMAIL_*` para notificaciones reales.
 
-10) Información adicional y referencias
+11) Información adicional y referencias
 -- Variables de entorno y comportamiento están en [config/settings.py](config/settings.py).
 -- Archivo `.env` en la raíz: [.env](.env)
 
