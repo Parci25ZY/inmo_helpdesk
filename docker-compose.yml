@@ -7,7 +7,7 @@ services:
     environment:
       - POSTGRES_DB=inmo_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=mundo123
     ports:
       - "5432:5432"
     volumes:

@@ -17,7 +17,7 @@ from django import forms
 from apps.accounts.models import CustomUser
 from apps.properties.models import Unidad
 
-from .models import EvidenciaTicket, Ticket, TicketCategory, TicketPriority
+from .models import EvidenciaTicket, MensajeTicket, Ticket, TicketCategory, TicketPriority
 
 INPUT_CLASS = (
     'w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 '
@@ -115,6 +115,27 @@ class TicketResolutionForm(forms.ModelForm):
                 'class': TEXTAREA_CLASS,
                 'rows': 5,
                 'placeholder': 'Resumen de la intervención, materiales, observaciones.',
+            }),
+        }
+
+
+class MensajeForm(forms.ModelForm):
+    """Mensaje en el hilo de comunicación técnico ↔ inquilino."""
+
+    class Meta:
+        model = MensajeTicket
+        fields = ['mensaje']
+        labels = {'mensaje': ''}
+        widgets = {
+            'mensaje': forms.Textarea(attrs={
+                'class': (
+                    'w-full border border-zinc-200 bg-white text-sm text-zinc-900 '
+                    'px-4 py-3 outline-none focus:border-zinc-900 transition-colors '
+                    'resize-none placeholder-zinc-400'
+                ),
+                'rows': 3,
+                'placeholder': 'Escribe un mensaje…',
+                'maxlength': 1000,
             }),
         }
 

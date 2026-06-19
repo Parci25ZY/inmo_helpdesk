@@ -21,6 +21,58 @@
         <!-- ── KPIs ───────────────────────────────────────────────────── -->
         <section aria-labelledby="kpi-heading">
             <h2 id="kpi-heading" class="sr-only">Estadísticas</h2>
+            {% if request.user.is_tecnico %}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <!-- Por Iniciar -->
+                <article class="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 rounded-[2rem] p-8 border border-amber-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-amber-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-white text-amber-500 shadow-sm flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            </div>
+                            <h3 class="text-base font-bold text-amber-900/80">Por Iniciar</h3>
+                        </div>
+                        <div class="flex items-baseline gap-3">
+                            <p class="text-6xl font-black text-amber-600 tracking-tighter">{{ kpi_por_iniciar }}</p>
+                            <p class="text-sm font-medium text-amber-700/60 leading-tight">tickets<br>asignados</p>
+                        </div>
+                    </div>
+                </article>
+                <!-- En Trabajo -->
+                <article class="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-blue-50 rounded-[2rem] p-8 border border-indigo-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-indigo-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-white text-indigo-500 shadow-sm flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </div>
+                            <h3 class="text-base font-bold text-indigo-900/80">En Trabajo</h3>
+                        </div>
+                        <div class="flex items-baseline gap-3">
+                            <p class="text-6xl font-black text-indigo-600 tracking-tighter">{{ kpi_en_trabajo }}</p>
+                            <p class="text-sm font-medium text-indigo-700/60 leading-tight">tickets<br>en ejecución</p>
+                        </div>
+                    </div>
+                </article>
+                <!-- Resueltos -->
+                <article class="relative overflow-hidden bg-emerald-50 rounded-[2rem] p-8 border border-emerald-200 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-emerald-300 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-500 shadow-sm flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <h3 class="text-base font-bold text-emerald-900">Resueltos</h3>
+                        </div>
+                        <div class="flex items-baseline gap-3">
+                            <p class="text-6xl font-black text-emerald-700 tracking-tighter">{{ kpi_resueltos_total }}</p>
+                            <p class="text-sm font-medium text-emerald-600 leading-tight">tickets<br>completados</p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+            {% else %}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <article class="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 rounded-[2rem] p-8 border border-amber-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
                     <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-amber-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -49,6 +101,7 @@
                     </div>
                 </article>
             </div>
+            {% endif %}
         </section>
 
         <!-- ── Accesos rápidos por rol ───────────────────────────────── -->

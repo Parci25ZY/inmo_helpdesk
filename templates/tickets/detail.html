@@ -2,6 +2,10 @@
 
 {% block title %}{{ ticket.codigo }} · {{ ticket.titulo }} — InmoHelpdesk{% endblock %}
 
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2uQ8djCPaOPWQ4c2nWmLMGnNHhBduvF4e5" crossorigin="anonymous"></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen flex flex-col bg-zinc-50">
 
@@ -118,6 +122,21 @@
                         <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.ia_descripcion_tecnica }}</p>
                     </div>
                     {% endif %}
+                </section>
+                {% endif %}
+
+                <!-- Comunicación Técnico ↔ Inquilino -->
+                {% if ticket.tecnico and not request.user.is_admin %}
+                <section class="bg-white border border-zinc-200 p-6">
+                    <div class="flex items-center justify-between border-b border-zinc-200 pb-2 mb-5">
+                        <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400">Comunicación</p>
+                        <span class="text-[0.65rem] font-mono text-zinc-500">
+                            {% if request.user.is_tecnico %}Inquilino: {{ ticket.inquilino.get_full_name }}{% else %}Técnico: {{ ticket.tecnico.get_full_name }}{% endif %}
+                        </span>
+                    </div>
+                    <div id="mensajes-hilo" class="space-y-4 max-h-80 overflow-y-auto pr-1">
+                        {% include 'tickets/partials/_mensajes.html' %}
+                    </div>
                 </section>
                 {% endif %}
 
@@ -267,15 +286,14 @@
                 <section class="bg-zinc-900 text-white p-5">
                     <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-400 border-b border-zinc-700 pb-2 mb-4">Acciones disponibles</p>
                     <div class="space-y-2">
-                        {% for destino in transiciones_disponibles %}
-                            {% if destino == 'PENDIENTE_VALIDACION' and request.user.is_admin %}{% comment %}Skip — la validación se hace por el form{% endcomment %}
-                            {% elif destino == 'ASIGNADO' and request.user.is_admin %}{% comment %}Skip — la asignación es vía validate{% endcomment %}
+                        {% for destino, label in transiciones_con_label %}
+                            {% if destino == 'ASIGNADO' and request.user.is_admin %}{% comment %}Skip — la asignación es vía validate{% endcomment %}
                             {% elif destino == 'RESUELTO' and puede_resolver %}{% comment %}Skip — usar form de resolución{% endcomment %}
                             {% else %}
                             <form method="POST" action="{% url 'ticket_transition' ticket.pk destino %}">
                                 {% csrf_token %}
                                 <button type="submit" class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-mono tracking-widest uppercase border border-zinc-700 text-zinc-300 hover:bg-amber-400 hover:text-zinc-900 hover:border-amber-400 transition-all">
-                                    <span>→ {{ destino|cut:"_"|capfirst }}</span>
+                                    <span>→ {{ label }}</span>
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                                 </button>
                             </form>

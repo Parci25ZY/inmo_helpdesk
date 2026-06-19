@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -32,18 +32,31 @@ from apps.accounts.models import CustomUser
 
 from .forms import (
     EvidenciaForm,
+    MensajeForm,
     TicketAdminValidateForm,
     TicketCreateForm,
     TicketResolutionForm,
     TicketTransitionForm,
 )
-from .models import EvidenciaTicket, Ticket, TicketStatus
+from .models import EvidenciaTicket, MensajeTicket, Ticket, TicketPriority, TicketStatus
 from .services.transitions import (
     InvalidTransitionError,
     TransitionPermissionError,
     allowed_transitions_for,
     transition_ticket,
 )
+
+
+# Labels legibles para cada transición — reemplaza el enum crudo en la UI
+_TRANSITION_LABELS: dict[str, str] = {
+    TicketStatus.ANALIZADO_POR_IA: 'Marcar como analizado',
+    TicketStatus.PENDIENTE_VALIDACION: 'Enviar a validación',
+    TicketStatus.ASIGNADO: 'Confirmar asignación',
+    TicketStatus.EN_CAMINO: 'Salir hacia el sitio',
+    TicketStatus.EN_PROGRESO: 'Iniciar intervención',
+    TicketStatus.RESUELTO: 'Marcar como resuelto',
+    TicketStatus.CANCELADO: 'Cancelar ticket',
+}
 
 
 # ── Mixins ──────────────────────────────────────────────────────────────
@@ -109,7 +122,15 @@ class TicketListView(LoginRequiredMixin, ListView):
                 | Q(unidad__numero__icontains=search)
                 | Q(unidad__edificio__nombre__icontains=search)
             )
-        return qs.order_by('-creado_en')
+        prioridad_orden = Case(
+            When(prioridad=TicketPriority.CRITICA, then=Value(1)),
+            When(prioridad=TicketPriority.ALTA, then=Value(2)),
+            When(prioridad=TicketPriority.MEDIA, then=Value(3)),
+            When(prioridad=TicketPriority.BAJA, then=Value(4)),
+            default=Value(5),
+            output_field=IntegerField(),
+        )
+        return qs.annotate(prioridad_orden=prioridad_orden).order_by('prioridad_orden', '-creado_en')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -120,16 +141,30 @@ class TicketListView(LoginRequiredMixin, ListView):
         elif not user.is_admin:
             base_qs = base_qs.filter(inquilino=user)
 
+        _estados_tecnico = (
+            TicketStatus.ASIGNADO,
+            TicketStatus.EN_CAMINO,
+            TicketStatus.EN_PROGRESO,
+            TicketStatus.RESUELTO,
+            TicketStatus.CANCELADO,
+        )
         ctx.update({
-            'estados': TicketStatus.choices,
+            'estados': (
+                [c for c in TicketStatus.choices if c[0] in _estados_tecnico]
+                if user.is_tecnico else TicketStatus.choices
+            ),
             'estado_filtrado': self.request.GET.get('estado', ''),
             'prioridad_filtrada': self.request.GET.get('prioridad', ''),
             'search_query': self.request.GET.get('search', ''),
-            'kpi_pendientes': base_qs.filter(estado__in=[
-                TicketStatus.CREADO_PENDIENTE_IA,
-                TicketStatus.ANALIZADO_POR_IA,
-                TicketStatus.PENDIENTE_VALIDACION,
-            ]).count(),
+            'kpi_pendientes': (
+                base_qs.filter(estado=TicketStatus.ASIGNADO).count()
+                if user.is_tecnico else
+                base_qs.filter(estado__in=[
+                    TicketStatus.CREADO_PENDIENTE_IA,
+                    TicketStatus.ANALIZADO_POR_IA,
+                    TicketStatus.PENDIENTE_VALIDACION,
+                ]).count()
+            ),
             'kpi_en_proceso': base_qs.filter(estado__in=[
                 TicketStatus.ASIGNADO,
                 TicketStatus.EN_CAMINO,
@@ -153,7 +188,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     def get_queryset(self):
         return Ticket.objects.select_related(
             'inquilino', 'tecnico', 'unidad', 'unidad__edificio', 'ia_tecnico_sugerido',
-        ).prefetch_related('evidencias', 'historial__actor')
+        ).prefetch_related('evidencias', 'historial__actor', 'mensajes__autor')
 
     def get_object(self, queryset=None):
         ticket = super().get_object(queryset)
@@ -180,10 +215,12 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         ticket: Ticket = ctx['ticket']
         user = self.request.user
         actor_role = 'ADMIN' if user.is_admin else ('TECNICO' if user.is_tecnico else 'INQUILINO')
+        transiciones = list(allowed_transitions_for(ticket, role=actor_role))
         ctx.update({
-            'transiciones_disponibles': list(
-                allowed_transitions_for(ticket, role=actor_role)
-            ),
+            'transiciones_disponibles': transiciones,
+            'transiciones_con_label': [
+                (t, _TRANSITION_LABELS.get(t, t)) for t in transiciones
+            ],
             'evidencias_reporte': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.REPORTE),
             'evidencias_resolucion': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.RESOLUCION),
             'evidencia_form': EvidenciaForm(),
@@ -192,6 +229,16 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             'puede_resolver': user.is_tecnico and ticket.estado == TicketStatus.EN_PROGRESO and ticket.tecnico_id == user.id,
             'validate_form': TicketAdminValidateForm(instance=ticket),
             'resolution_form': TicketResolutionForm(instance=ticket),
+            'mensajes': ticket.mensajes.all(),
+            'mensaje_form': MensajeForm(),
+            'puede_mensajear': (
+                ticket.tecnico_id is not None
+                and not ticket.is_terminal
+                and (
+                    (user.is_tecnico and ticket.tecnico_id == user.id)
+                    or (user.is_inquilino and ticket.inquilino_id == user.id)
+                )
+            ),
         })
         return ctx
 
@@ -404,6 +451,47 @@ class EvidenciaUploadView(LoginRequiredMixin, View):
         return redirect('ticket_detail', pk=pk)
 
 
+# ── Mensajes Técnico ↔ Inquilino ───────────────────────────────────────
+
+class MensajeCreateView(LoginRequiredMixin, View):
+    """Crea un mensaje en el hilo de comunicación del ticket."""
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        ticket = get_object_or_404(
+            Ticket.objects.select_related('inquilino', 'tecnico'),
+            pk=pk,
+        )
+        user = request.user
+        puede = (
+            ticket.tecnico_id is not None
+            and not ticket.is_terminal
+            and (
+                (user.is_tecnico and ticket.tecnico_id == user.id)
+                or (user.is_inquilino and ticket.inquilino_id == user.id)
+            )
+        )
+        if not puede:
+            messages.error(request, 'No puedes enviar mensajes en este ticket.')
+            return redirect('ticket_detail', pk=pk)
+
+        form = MensajeForm(request.POST)
+        if form.is_valid():
+            msg = form.save(commit=False)
+            msg.ticket = ticket
+            msg.autor = user
+            msg.save()
+
+        if request.headers.get('HX-Request'):
+            return render(request, 'tickets/partials/_mensajes.html', {
+                'mensajes': ticket.mensajes.select_related('autor').all(),
+                'ticket': ticket,
+                'mensaje_form': MensajeForm(),
+                'puede_mensajear': True,
+            })
+
+        return redirect('ticket_detail', pk=pk)
+
+
 # ── Dashboard (mantener compat con URL existente) ───────────────────────
 
 class DashboardView(LoginRequiredMixin, ListView):
@@ -433,9 +521,17 @@ class DashboardView(LoginRequiredMixin, ListView):
             TicketStatus.ANALIZADO_POR_IA,
             TicketStatus.PENDIENTE_VALIDACION,
         ]).count()
-        ctx['en_progreso'] = scope.filter(estado__in=[
+        estados_activos = [
             TicketStatus.ASIGNADO,
             TicketStatus.EN_CAMINO,
             TicketStatus.EN_PROGRESO,
-        ]).count()
+        ]
+        ctx['en_progreso'] = scope.filter(estado__in=estados_activos).count()
+        if user.is_tecnico:
+            ctx['kpi_por_iniciar'] = scope.filter(estado=TicketStatus.ASIGNADO).count()
+            ctx['kpi_en_trabajo'] = scope.filter(estado__in=[
+                TicketStatus.EN_CAMINO,
+                TicketStatus.EN_PROGRESO,
+            ]).count()
+            ctx['kpi_resueltos_total'] = scope.filter(estado=TicketStatus.RESUELTO).count()
         return ctx

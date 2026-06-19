@@ -206,6 +206,31 @@ class EvidenciaTicket(models.Model):
         return f'Evidencia {self.ticket.codigo} ({self.get_momento_display()})'
 
 
+class MensajeTicket(models.Model):
+    """Hilo de comunicación directo entre técnico e inquilino en un ticket."""
+
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.CASCADE,
+        related_name='mensajes',
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='mensajes_ticket',
+    )
+    mensaje = models.TextField(_('Mensaje'), max_length=1000)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Mensaje')
+        verbose_name_plural = _('Mensajes')
+        ordering = ['creado_en']
+
+    def __str__(self) -> str:
+        return f'{self.ticket.codigo} · {self.autor.get_full_name()}'
+
+
 class HistorialEstado(models.Model):
     """Registro auditable de cada transición de estado del ticket."""
 

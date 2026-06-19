@@ -10,4 +10,5 @@ urlpatterns = [
     path('<int:pk>/resolver/', views.TicketResolveView.as_view(), name='ticket_resolve'),
     path('<int:pk>/transicion/<str:destino>/', views.TicketTransitionView.as_view(), name='ticket_transition'),
     path('<int:pk>/evidencia/', views.EvidenciaUploadView.as_view(), name='ticket_evidencia_upload'),
+    path('<int:pk>/mensaje/', views.MensajeCreateView.as_view(), name='ticket_mensaje_create'),
 ]
