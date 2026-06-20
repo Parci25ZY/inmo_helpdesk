@@ -133,6 +133,106 @@ def generate_chat_response(
     return data
 
 
+def analyze_ticket_description(
+    titulo: str,
+    descripcion: str,
+    tecnicos: list[dict] | None = None,
+) -> dict[str, Any]:
+    """Analiza la descripción de un ticket y devuelve sugerencias estructuradas.
+
+    Args:
+        titulo: título del ticket ingresado por el inquilino.
+        descripcion: descripción detallada del problema.
+        tecnicos: lista de dicts con 'id' y 'nombre' de técnicos disponibles.
+
+    Returns:
+        Dict con categoria_sugerida, prioridad_sugerida, descripcion_tecnica,
+        razon_asignacion, tecnico_sugerido_id y confianza.
+    """
+    client = _client()
+
+    tecnicos_bloque = ''
+    if tecnicos:
+        lineas = [f'  - ID {t["id"]}: {t["nombre"]}' for t in tecnicos]
+        tecnicos_bloque = 'Técnicos disponibles:\n' + '\n'.join(lineas) + '\n\n'
+
+    prompt = (
+        f'Analiza este ticket de mantenimiento inmobiliario:\n\n'
+        f'TÍTULO: {titulo}\n'
+        f'DESCRIPCIÓN: {descripcion}\n\n'
+        f'{tecnicos_bloque}'
+        f'Clasifica con precisión según el problema descrito y devuelve JSON.'
+    )
+
+    system = (
+        'Eres un experto en mantenimiento inmobiliario. '
+        'Analiza tickets de soporte y clasifícalos con precisión.\n'
+        'Prioridades: BAJA (cosmético/estético), MEDIA (afecta confort), '
+        'ALTA (funcionalidad esencial comprometida), CRITICA (riesgo de seguridad o daño grave inmediato).\n'
+        'Categorías: PLOMERIA, ELECTRICIDAD, INFRAESTRUCTURA, LIMPIEZA, SEGURIDAD, OTRO.\n'
+        'Responde exclusivamente en JSON según el esquema solicitado. Sin texto adicional.'
+    )
+
+    response = client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=[types.Content(role='user', parts=[types.Part.from_text(text=prompt)])],
+        config=types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.1,
+            response_mime_type='application/json',
+            response_schema={
+                'type': 'OBJECT',
+                'properties': {
+                    'categoria_sugerida': {
+                        'type': 'STRING',
+                        'description': 'PLOMERIA|ELECTRICIDAD|INFRAESTRUCTURA|LIMPIEZA|SEGURIDAD|OTRO',
+                    },
+                    'prioridad_sugerida': {
+                        'type': 'STRING',
+                        'description': 'BAJA|MEDIA|ALTA|CRITICA',
+                    },
+                    'descripcion_tecnica': {
+                        'type': 'STRING',
+                        'description': 'Resumen técnico del problema en ≤ 300 caracteres para el técnico.',
+                    },
+                    'razon_asignacion': {
+                        'type': 'STRING',
+                        'description': 'Por qué se asigna esa prioridad y categoría en ≤ 200 caracteres.',
+                    },
+                    'tecnico_sugerido_id': {
+                        'type': 'INTEGER',
+                        'description': 'ID del técnico más adecuado según la lista. 0 si no aplica.',
+                    },
+                    'confianza': {
+                        'type': 'NUMBER',
+                        'description': 'Confianza en el análisis entre 0.0 y 1.0.',
+                    },
+                },
+                'required': [
+                    'categoria_sugerida',
+                    'prioridad_sugerida',
+                    'descripcion_tecnica',
+                    'confianza',
+                ],
+            },
+        ),
+    )
+
+    raw = response.text or '{}'
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning('Respuesta Gemini no JSON en analyze_ticket: %s', raw[:200])
+        return {
+            'categoria_sugerida': 'OTRO',
+            'prioridad_sugerida': 'MEDIA',
+            'descripcion_tecnica': descripcion[:300],
+            'razon_asignacion': '',
+            'tecnico_sugerido_id': 0,
+            'confianza': 0.5,
+        }
+
+
 def chunk_text(text: str, chunk_size: int = 600, overlap: int = 80) -> list[str]:
     """Divide texto en fragmentos con solapamiento para indexación RAG."""
     text = re.sub(r'\s+', ' ', text.strip())

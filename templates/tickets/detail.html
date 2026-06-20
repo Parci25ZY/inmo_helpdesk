@@ -128,13 +128,16 @@
                 <!-- Comunicación Técnico ↔ Inquilino -->
                 {% if ticket.tecnico and not request.user.is_admin %}
                 <section class="bg-white border border-zinc-200 p-6">
-                    <div class="flex items-center justify-between border-b border-zinc-200 pb-2 mb-5">
-                        <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400">Comunicación</p>
-                        <span class="text-[0.65rem] font-mono text-zinc-500">
-                            {% if request.user.is_tecnico %}Inquilino: {{ ticket.inquilino.get_full_name }}{% else %}Técnico: {{ ticket.tecnico.get_full_name }}{% endif %}
+                    <div class="flex items-center justify-between border-b border-zinc-100 pb-3 mb-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                            <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400">Comunicación</p>
+                        </div>
+                        <span class="text-[0.65rem] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded-full">
+                            {% if request.user.is_tecnico %}{{ ticket.inquilino.get_full_name }}{% else %}{{ ticket.tecnico.get_full_name }}{% endif %}
                         </span>
                     </div>
-                    <div id="mensajes-hilo" class="space-y-4 max-h-80 overflow-y-auto pr-1">
+                    <div id="mensajes-hilo" class="space-y-5 max-h-80 overflow-y-auto pr-2">
                         {% include 'tickets/partials/_mensajes.html' %}
                     </div>
                 </section>
@@ -232,18 +235,6 @@
                 </section>
                 {% endif %}
 
-                <!-- Subir nueva evidencia -->
-                {% if not ticket.is_terminal %}
-                <section class="bg-white border border-zinc-200 p-6">
-                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Añadir Evidencia</p>
-                    <form method="POST" action="{% url 'ticket_evidencia_upload' ticket.pk %}" enctype="multipart/form-data" class="space-y-4">
-                        {% csrf_token %}
-                        {{ evidencia_form.archivo }}
-                        {{ evidencia_form.descripcion }}
-                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Subir Archivo</button>
-                    </form>
-                </section>
-                {% endif %}
 
             </div>
 

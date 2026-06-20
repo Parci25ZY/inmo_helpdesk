@@ -1,21 +1,45 @@
 {% for msg in mensajes %}
-<div class="flex gap-3 {% if msg.autor_id == request.user.id %}flex-row-reverse{% endif %}">
-    <div class="w-8 h-8 shrink-0 flex items-center justify-center text-[0.65rem] font-bold uppercase rounded-full
-                {% if msg.autor_id == request.user.id %}bg-zinc-900 text-amber-400{% else %}bg-zinc-200 text-zinc-700{% endif %}">
-        {{ msg.autor.first_name|slice:":1" }}{{ msg.autor.last_name|slice:":1" }}
-    </div>
-    <div class="max-w-[75%] flex flex-col gap-1 {% if msg.autor_id == request.user.id %}items-end{% else %}items-start{% endif %}">
-        <div class="px-4 py-2.5 text-sm leading-relaxed
-                    {% if msg.autor_id == request.user.id %}bg-zinc-900 text-white{% else %}bg-zinc-100 text-zinc-900{% endif %}">
+
+{% if msg.autor_id == request.user.id %}
+<div class="flex w-full justify-end gap-3 items-end">
+    <div class="max-w-[72%] flex flex-col gap-2 items-end">
+        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-900 text-white">
             {{ msg.mensaje }}
         </div>
-        <p class="text-[0.6rem] font-mono text-zinc-400 px-1">
-            {{ msg.autor.get_full_name|default:msg.autor.email }} · {{ msg.creado_en|date:"d M · H:i" }}
+        <p class="text-[0.6rem] font-mono text-zinc-400 px-2 select-none">
+            {{ msg.autor.first_name }} · {{ msg.creado_en|date:"H:i" }}
+        </p>
+    </div>
+    <div class="w-9 h-9 shrink-0 flex items-center justify-center text-[0.6rem] font-bold uppercase rounded-full bg-amber-400 text-zinc-900">
+        {{ msg.autor.first_name|slice:":1" }}{{ msg.autor.last_name|slice:":1" }}
+    </div>
+</div>
+{% else %}
+<div class="flex w-full gap-3 items-end">
+    <div class="w-9 h-9 shrink-0 flex items-center justify-center text-[0.6rem] font-bold uppercase rounded-full bg-zinc-200 text-zinc-700">
+        {{ msg.autor.first_name|slice:":1" }}{{ msg.autor.last_name|slice:":1" }}
+    </div>
+    <div class="max-w-[72%] flex flex-col gap-2 items-start">
+        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-100 text-zinc-900">
+            {{ msg.mensaje }}
+        </div>
+        <p class="text-[0.6rem] font-mono text-zinc-400 px-2 select-none">
+            {{ msg.autor.first_name }} · {{ msg.creado_en|date:"H:i" }}
         </p>
     </div>
 </div>
+{% endif %}
+
 {% empty %}
-<p class="text-xs text-zinc-400 text-center py-6 font-mono">Sin mensajes aún — inicia la conversación.</p>
+<div class="flex flex-col items-center justify-center py-10 gap-3">
+    <div class="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+    </div>
+    <p class="text-xs text-zinc-400 font-mono tracking-wide">Sin mensajes aún — inicia la conversación.</p>
+</div>
 {% endfor %}
 
 {% if puede_mensajear %}
@@ -24,15 +48,32 @@
       hx-post="{% url 'ticket_mensaje_create' ticket.pk %}"
       hx-target="#mensajes-hilo"
       hx-swap="innerHTML"
-      hx-on::after-request="this.reset()"
-      class="mt-5 pt-4 border-t border-zinc-100 flex gap-3 items-start">
+      class="mt-5 pt-4 border-t border-zinc-100 flex gap-2 items-end">
     {% csrf_token %}
-    <div class="flex-1">
-        {{ mensaje_form.mensaje }}
-    </div>
-    <button type="submit"
-            class="shrink-0 bg-zinc-900 text-white px-4 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">
+    <textarea name="mensaje" rows="2" maxlength="1000"
+              placeholder="Escribe un mensaje…"
+              class="flex-1 bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-amber-400 focus:bg-white transition-colors resize-none"></textarea>
+    <button type="submit" disabled
+            class="shrink-0 self-end px-5 py-3 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all
+                   bg-zinc-900 text-white opacity-40 cursor-not-allowed">
         Enviar
     </button>
 </form>
+<script>
+(function () {
+    var hilo = document.getElementById('mensajes-hilo');
+    if (!hilo) return;
+    var area = hilo.querySelector('textarea[name="mensaje"]');
+    var btn  = hilo.querySelector('button[type="submit"]');
+    if (!area || !btn) return;
+    area.addEventListener('input', function () {
+        var hasText = this.value.trim().length > 0;
+        btn.disabled = !hasText;
+        btn.classList.toggle('opacity-40', !hasText);
+        btn.classList.toggle('cursor-not-allowed', !hasText);
+        btn.classList.toggle('hover:bg-amber-400', hasText);
+        btn.classList.toggle('hover:text-zinc-900', hasText);
+    });
+})();
+</script>
 {% endif %}

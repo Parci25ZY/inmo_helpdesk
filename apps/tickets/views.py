@@ -31,7 +31,6 @@ from django.views.generic import (
 from apps.accounts.models import CustomUser
 
 from .forms import (
-    EvidenciaForm,
     MensajeForm,
     TicketAdminValidateForm,
     TicketCreateForm,
@@ -223,7 +222,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             ],
             'evidencias_reporte': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.REPORTE),
             'evidencias_resolucion': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.RESOLUCION),
-            'evidencia_form': EvidenciaForm(),
             'transition_form': TicketTransitionForm(),
             'puede_validar': user.is_admin and ticket.is_pendiente_validacion,
             'puede_resolver': user.is_tecnico and ticket.estado == TicketStatus.EN_PROGRESO and ticket.tecnico_id == user.id,
@@ -294,6 +292,16 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
                 momento=EvidenciaTicket.Momento.REPORTE,
                 subido_por=self.request.user,
             )
+        # Disparar análisis IA — async con Celery, síncrono como fallback
+        try:
+            from apps.ai_agent.tasks import analyze_ticket
+            analyze_ticket.apply_async(args=[self.object.pk], countdown=2)
+        except Exception:
+            try:
+                from apps.ai_agent.tasks import _run_ticket_analysis
+                _run_ticket_analysis(self.object.pk)
+            except Exception:
+                pass  # Sin Gemini ni Celery: el admin avanza manualmente
         messages.success(self.request, f'Ticket {self.object.codigo} creado. Pronto será analizado.')
         return response
 
@@ -422,32 +430,6 @@ class TicketResolveView(RoleRequiredMixin, View):
             messages.error(request, str(exc))
             return redirect('ticket_detail', pk=pk)
         messages.success(request, f'Ticket {ticket.codigo} marcado como resuelto.')
-        return redirect('ticket_detail', pk=pk)
-
-
-# ── Subida de evidencia adicional ───────────────────────────────────────
-
-class EvidenciaUploadView(LoginRequiredMixin, View):
-    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
-        ticket = get_object_or_404(Ticket, pk=pk)
-        user = request.user
-        if user.is_inquilino and ticket.inquilino_id != user.id:
-            messages.error(request, 'Acción no permitida.')
-            return redirect('ticket_detail', pk=pk)
-        form = EvidenciaForm(request.POST, request.FILES)
-        if not form.is_valid():
-            messages.error(request, 'No se pudo subir el archivo.')
-            return redirect('ticket_detail', pk=pk)
-        evidencia: EvidenciaTicket = form.save(commit=False)
-        evidencia.ticket = ticket
-        evidencia.subido_por = user
-        evidencia.momento = (
-            EvidenciaTicket.Momento.RESOLUCION
-            if ticket.estado in {TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO}
-            else EvidenciaTicket.Momento.REPORTE
-        )
-        evidencia.save()
-        messages.success(request, 'Evidencia añadida.')
         return redirect('ticket_detail', pk=pk)
 
 

@@ -7,7 +7,7 @@ Cada formulario está pensado para un rol/contexto específico:
   IA y asigna técnico (transición PENDIENTE_VALIDACION → ASIGNADO).
 * :class:`TicketTransitionForm` — wrapper genérico para añadir notas a
   cualquier transición de estado.
-* :class:`EvidenciaForm` — adjuntar archivos al ticket.
+* :class:`MensajeForm` — mensaje en el hilo de comunicación técnico ↔ inquilino.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from django import forms
 from apps.accounts.models import CustomUser
 from apps.properties.models import Unidad
 
-from .models import EvidenciaTicket, MensajeTicket, Ticket, TicketCategory, TicketPriority
+from .models import MensajeTicket, Ticket, TicketCategory, TicketPriority
 
 INPUT_CLASS = (
     'w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 '
@@ -139,20 +139,3 @@ class MensajeForm(forms.ModelForm):
             }),
         }
 
-
-class EvidenciaForm(forms.ModelForm):
-    """Subida de un archivo de evidencia para un ticket."""
-
-    class Meta:
-        model = EvidenciaTicket
-        fields = ['archivo', 'descripcion']
-        widgets = {
-            'archivo': forms.ClearableFileInput(attrs={
-                'class': 'block w-full text-sm text-zinc-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-zinc-900 file:text-white file:font-mono file:tracking-widest file:uppercase file:text-xs hover:file:bg-amber-400 hover:file:text-zinc-900 file:cursor-pointer',
-                'accept': 'image/*',
-            }),
-            'descripcion': forms.TextInput(attrs={
-                'class': INPUT_CLASS,
-                'placeholder': 'Descripción breve (opcional)',
-            }),
-        }
