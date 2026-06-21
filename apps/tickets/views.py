@@ -284,6 +284,13 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
             actor=self.request.user,
             nota='Ticket creado por el inquilino.',
         )
+        # Aviso al administrador vía n8n
+        try:
+            from .notifications import notify_nuevo_ticket
+            notify_nuevo_ticket(self.object)
+        except Exception:
+            pass
+
         # Evidencias subidas en el mismo formulario
         for f in self.request.FILES.getlist('evidencias'):
             EvidenciaTicket.objects.create(

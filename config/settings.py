@@ -197,6 +197,9 @@ CELERY_TASK_TIME_LIMIT = 120
 CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', str(DEBUG)).lower() == 'true'
 
 
+# ── n8n (notificaciones webhook) ──────────────────────────────────────────────
+N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL', '')
+
 # ── Otros ──────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
