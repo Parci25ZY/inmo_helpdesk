@@ -57,12 +57,12 @@
             </fieldset>
 
             <fieldset class="border-none p-0 m-0">
-                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">Asignación de Inquilino</legend>
+                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">Asignación de Residente</legend>
                 <div class="space-y-6">
                     <div>
-                        <label for="{{ form.inquilino.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">Inquilino asignado</label>
+                        <label for="{{ form.inquilino.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">Residente asignado</label>
                         {{ form.inquilino }}
-                        <p class="mt-2 text-xs text-zinc-400">Solo se muestran inquilinos sin unidad asignada actualmente.</p>
+                        <p class="mt-2 text-xs text-zinc-400">Solo se muestran residentes sin unidad asignada actualmente.</p>
                         {% for error in form.inquilino.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
                     </div>
                     <label class="flex items-center gap-3 cursor-pointer">

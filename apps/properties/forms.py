@@ -38,7 +38,7 @@ class UnidadForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Solo inquilinos sin unidad asignada (más la actual si existe)
+        # Solo residentes sin unidad asignada (más el actual si existe)
         instancia = kwargs.get('instance') or self.instance
         qs = CustomUser.objects.filter(role=CustomUser.Roles.INQUILINO, is_active=True, unidad_asignada__isnull=True)
         if instancia and instancia.pk and instancia.inquilino_id:

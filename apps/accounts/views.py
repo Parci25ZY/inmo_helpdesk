@@ -1,16 +1,18 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
+from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_http_methods
 
 from .models import CustomUser
 from .forms import (
     CustomUserCreationForm, 
     CustomAuthenticationForm, 
     UserEditForm, 
-    UserCreateForm
+    UserCreateForm,
+    ProfileEditForm,
 )
 from .decorators import admin_required
 
@@ -44,14 +46,11 @@ def password_reset_confirm_page(request):
     return render(request, 'accounts/password_reset_confirm.html')
 
 
-from django.views.decorators.http import require_http_methods
-
 @require_http_methods(["GET", "POST"])
 def user_logout(request):
     """Cerrar sesión (Soporta GET y POST para mayor compatibilidad)"""
-    if request.method == 'POST' or True: # Permitimos ambos por ahora para evitar bloqueos
-        logout(request)
-        messages.info(request, 'Has cerrado sesión correctamente.')
+    logout(request)
+    messages.info(request, 'Has cerrado sesión correctamente.')
     return redirect('login')
 
 @admin_required
@@ -141,20 +140,18 @@ def user_delete(request, user_id):
 
 @login_required
 def user_profile(request):
-    """Perfil del usuario autenticado"""
+    """Perfil del usuario autenticado.
+
+    Usa ProfileEditForm que solo expone campos seguros (nombre, email, teléfono).
+    No permite cambiar rol, is_active, is_staff ni especialidad.
+    """
     if request.method == 'POST':
-        form = UserEditForm(request.POST, instance=request.user)
-        # Bloqueamos cambios de rol y estado para el propio usuario
-        if 'role' in form.fields: form.fields['role'].disabled = True
-        if 'is_active' in form.fields: form.fields['is_active'].disabled = True
-        
+        form = ProfileEditForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Perfil actualizado exitosamente.')
             return redirect('user_profile')
     else:
-        form = UserEditForm(instance=request.user)
-        if 'role' in form.fields: form.fields['role'].disabled = True
-        if 'is_active' in form.fields: form.fields['is_active'].disabled = True
+        form = ProfileEditForm(instance=request.user)
     
     return render(request, 'accounts/user_profile.html', {'form': form})

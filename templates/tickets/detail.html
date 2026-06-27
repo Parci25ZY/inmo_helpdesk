@@ -37,7 +37,7 @@
 
         <!-- ── Cabecera del ticket ──────────────────────────────── -->
         <div class="bg-white border border-zinc-200 mb-8 overflow-hidden">
-            <div class="h-1.5 {% if ticket.prioridad == 'CRITICA' %}bg-red-500{% elif ticket.prioridad == 'ALTA' %}bg-orange-400{% else %}bg-amber-400{% endif %}"></div>
+            <div class="h-1.5 {% if ticket.prioridad == 'ALTA' %}bg-orange-400{% elif ticket.prioridad == 'MEDIA' %}bg-amber-400{% else %}bg-zinc-300{% endif %}"></div>
             <div class="p-6 sm:p-8">
                 <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                     <div class="flex-1 min-w-0">
@@ -82,7 +82,7 @@
 
                 <!-- Descripción -->
                 <section class="bg-white border border-zinc-200 p-6">
-                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Descripción del Inquilino</p>
+                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 mb-4">Descripción del Residente</p>
                     <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.descripcion }}</p>
                 </section>
 

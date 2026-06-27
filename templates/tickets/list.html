@@ -103,7 +103,7 @@
                         <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Estado</th>
                         <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-28">Prioridad</th>
                         {% if request.user.is_admin or request.user.is_tecnico %}
-                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Inquilino</th>
+                        <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Residente</th>
                         <th class="py-4 px-5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-16 text-center">Info</th>
                         {% endif %}
                     </tr>
@@ -168,7 +168,7 @@
                                     <p class="text-xs font-mono text-zinc-500 mt-0.5">Piso {{ ticket.unidad.piso }} · {{ ticket.unidad.get_tipo_display }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-[0.6rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Inquilino</p>
+                                    <p class="text-[0.6rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Residente</p>
                                     <p class="text-sm font-semibold text-zinc-800">{{ ticket.inquilino.get_full_name }}</p>
                                     <p class="text-xs font-mono text-zinc-500 mt-0.5">{{ ticket.inquilino.email }}</p>
                                 </div>

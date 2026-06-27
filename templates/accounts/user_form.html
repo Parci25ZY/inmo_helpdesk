@@ -6,10 +6,11 @@
 <div class="min-h-screen flex flex-col bg-zinc-50">
 
     <!-- ── Header ───────────────────────────────────────────────────────── -->
-    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
+    <header
+        class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-amber-400 gap-4">
         <div class="flex items-center gap-4">
             <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/>
+                <path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z" />
             </svg>
             <div>
                 <h1 class="text-lg font-bold tracking-tight">
@@ -50,9 +51,12 @@
 
         <!-- ── Errores globales del formulario ──────────────────────── -->
         {% if form.non_field_errors %}
-        <div role="alert" class="mb-6 flex gap-3 items-start bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3">
+        <div role="alert"
+            class="mb-6 flex gap-3 items-start bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3">
             <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                <path fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd" />
             </svg>
             <ul class="space-y-1">
                 {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
@@ -65,7 +69,8 @@
 
             <!-- ── Sección: Datos personales ───────────────────────── -->
             <fieldset class="border-none p-0 m-0">
-                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                <legend
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
                     Datos Personales
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -77,7 +82,9 @@
                             Nombres
                         </label>
                         {{ form.first_name }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.first_name.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
@@ -90,7 +97,9 @@
                             Apellidos
                         </label>
                         {{ form.last_name }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.last_name.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
@@ -103,7 +112,9 @@
                             Correo Electrónico
                         </label>
                         {{ form.email }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.email.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
@@ -117,7 +128,9 @@
                             Teléfono
                         </label>
                         {{ form.phone }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.phone.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
@@ -129,7 +142,8 @@
 
             <!-- ── Sección: Rol y permisos ──────────────────────────── -->
             <fieldset class="border-none p-0 m-0">
-                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                <legend
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
                     Rol y Permisos
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -142,6 +156,19 @@
                         </label>
                         {{ form.role }}
                         {% for error in form.role.errors %}
+                        <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Especialidad (Oculto por defecto, solo para técnicos) -->
+                    <div id="especialidad-container" class="hidden">
+                        <label for="{{ form.especialidad.id_for_label }}"
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">
+                            Especialidad
+                        </label>
+                        {{ form.especialidad }}
+                        <p class="mt-2 text-xs text-zinc-400 leading-relaxed">{{ form.especialidad.help_text }}</p>
+                        {% for error in form.especialidad.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
                     </div>
@@ -175,7 +202,8 @@
             <!-- ── Sección: Contraseña (solo creación) ─────────────── -->
             {% if not user_obj %}
             <fieldset class="border-none p-0 m-0">
-                <legend class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                <legend
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
                     Contraseña de Acceso
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -187,12 +215,27 @@
                             Contraseña
                         </label>
                         {{ form.password1 }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.password1.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
                         {% if form.password1.help_text %}
-                        <p class="mt-2 text-xs text-zinc-400 leading-relaxed">{{ form.password1.help_text }}</p>
+                        <div class="mt-2 text-xs leading-relaxed password-help-box">
+                            <style>
+                                .password-help-box ul {
+                                    list-style-type: disc !important;
+                                    padding-left: 1.25rem !important;
+                                    margin-top: 0.25rem !important;
+                                }
+                                .password-help-box li {
+                                    color: #a1a1aa !important; /* Zinc-400 (gris medio/claro) - puedes cambiar este valor hex si quieres otro */
+                                    margin-bottom: 0.25rem !important;
+                                }
+                            </style>
+                            {{ form.password1.help_text }}
+                        </div>
                         {% endif %}
                     </div>
 
@@ -203,7 +246,9 @@
                             Confirmar Contraseña
                         </label>
                         {{ form.password2 }}
-                        <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full"></div>
+                        <div
+                            class="absolute bottom-0 left-0 h-0.5 w-0 bg-amber-400 transition-all duration-300 group-focus-within:w-full">
+                        </div>
                         {% for error in form.password2.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
@@ -214,19 +259,21 @@
             {% endif %}
 
             <!-- ── Acciones ─────────────────────────────────────────── -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-zinc-200 pt-6 gap-4">
+            <div
+                class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-zinc-200 pt-6 gap-4">
                 <a href="{% url 'user_list' %}"
-                   class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors inline-flex items-center gap-2">
+                    class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors inline-flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                     Cancelar y volver
                 </a>
                 <button type="submit"
                     class="group inline-flex items-center justify-between bg-zinc-900 text-white px-7 py-4 text-sm font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-amber-400 hover:text-zinc-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
                     {{ button_text }}
-                    <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    <svg class="w-4 h-4 ml-3 transition-transform duration-200 group-hover:translate-x-1" fill="none"
+                        stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
             </div>
@@ -234,4 +281,28 @@
         </form>
     </main>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const roleSelect = document.getElementById('{{ form.role.id_for_label }}');
+        const especialidadContainer = document.getElementById('especialidad-container');
+        const especialidadSelect = document.getElementById('{{ form.especialidad.id_for_label }}');
+
+        function toggleEspecialidad() {
+            if (roleSelect && roleSelect.value === 'TECNICO') {
+                especialidadContainer.classList.remove('hidden');
+            } else {
+                especialidadContainer.classList.add('hidden');
+                if (especialidadSelect) {
+                    especialidadSelect.value = '';
+                }
+            }
+        }
+
+        if (roleSelect) {
+            roleSelect.addEventListener('change', toggleEspecialidad);
+            toggleEspecialidad(); // Call on load
+        }
+    });
+</script>
 {% endblock %}

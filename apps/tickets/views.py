@@ -17,6 +17,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -122,23 +123,43 @@ class TicketListView(LoginRequiredMixin, ListView):
                 | Q(unidad__edificio__nombre__icontains=search)
             )
         prioridad_orden = Case(
-            When(prioridad=TicketPriority.CRITICA, then=Value(1)),
-            When(prioridad=TicketPriority.ALTA, then=Value(2)),
-            When(prioridad=TicketPriority.MEDIA, then=Value(3)),
-            When(prioridad=TicketPriority.BAJA, then=Value(4)),
-            default=Value(5),
+            When(prioridad=TicketPriority.ALTA, then=Value(1)),
+            When(prioridad=TicketPriority.MEDIA, then=Value(2)),
+            When(prioridad=TicketPriority.BAJA, then=Value(3)),
+            default=Value(4),
             output_field=IntegerField(),
         )
         return qs.annotate(prioridad_orden=prioridad_orden).order_by('prioridad_orden', '-creado_en')
 
+    def _base_scope(self):
+        """Queryset base filtrado por rol para KPIs (sin filtros de búsqueda)."""
+        user = self.request.user
+        qs = Ticket.objects.all()
+        if user.is_tecnico:
+            qs = qs.filter(tecnico=user)
+        elif not user.is_admin:
+            qs = qs.filter(inquilino=user)
+        return qs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        base_qs = Ticket.objects.all()
-        if user.is_tecnico:
-            base_qs = base_qs.filter(tecnico=user)
-        elif not user.is_admin:
-            base_qs = base_qs.filter(inquilino=user)
+        base_qs = self._base_scope()
+
+        # Una sola query con aggregate en vez de 4 count() separadas
+        _estados_pendientes = (
+            [TicketStatus.ASIGNADO] if user.is_tecnico else
+            [TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.ANALIZADO_POR_IA,
+             TicketStatus.PENDIENTE_VALIDACION]
+        )
+        stats = base_qs.aggregate(
+            kpi_pendientes=Count('pk', filter=Q(estado__in=_estados_pendientes)),
+            kpi_en_proceso=Count('pk', filter=Q(estado__in=[
+                TicketStatus.ASIGNADO, TicketStatus.EN_CAMINO, TicketStatus.EN_PROGRESO,
+            ])),
+            kpi_resueltos=Count('pk', filter=Q(estado=TicketStatus.RESUELTO)),
+            kpi_total=Count('pk'),
+        )
 
         _estados_tecnico = (
             TicketStatus.ASIGNADO,
@@ -155,22 +176,7 @@ class TicketListView(LoginRequiredMixin, ListView):
             'estado_filtrado': self.request.GET.get('estado', ''),
             'prioridad_filtrada': self.request.GET.get('prioridad', ''),
             'search_query': self.request.GET.get('search', ''),
-            'kpi_pendientes': (
-                base_qs.filter(estado=TicketStatus.ASIGNADO).count()
-                if user.is_tecnico else
-                base_qs.filter(estado__in=[
-                    TicketStatus.CREADO_PENDIENTE_IA,
-                    TicketStatus.ANALIZADO_POR_IA,
-                    TicketStatus.PENDIENTE_VALIDACION,
-                ]).count()
-            ),
-            'kpi_en_proceso': base_qs.filter(estado__in=[
-                TicketStatus.ASIGNADO,
-                TicketStatus.EN_CAMINO,
-                TicketStatus.EN_PROGRESO,
-            ]).count(),
-            'kpi_resueltos': base_qs.filter(estado=TicketStatus.RESUELTO).count(),
-            'kpi_total': base_qs.count(),
+            **stats,
             'puede_crear': user.is_inquilino and getattr(user, 'unidad_asignada', None) is not None,
             'chatbot_habilitado': user.is_inquilino or user.is_admin,
         })
@@ -199,15 +205,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             return ticket
         if user.is_inquilino and ticket.inquilino_id == user.id:
             return ticket
-        messages.error(self.request, 'No tienes acceso a este ticket.')
-        return None
-
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        self.object = self.get_object()
-        if self.object is None:
-            return redirect('ticket_list')
-        ctx = self.get_context_data(object=self.object)
-        return self.render_to_response(ctx)
+        raise PermissionDenied('No tienes acceso a este ticket.')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -282,12 +280,12 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
             estado_anterior='',
             estado_nuevo=self.object.estado,
             actor=self.request.user,
-            nota='Ticket creado por el inquilino.',
+            nota='Ticket creado por el residente.',
         )
-        # Aviso al administrador vía n8n
+        # Aviso al administrador vía n8n (async)
         try:
             from .notifications import notify_nuevo_ticket
-            notify_nuevo_ticket(self.object)
+            notify_nuevo_ticket.delay(self.object.pk)
         except Exception:
             pass
 
@@ -487,40 +485,55 @@ class DashboardView(LoginRequiredMixin, ListView):
     model = Ticket
     template_name = 'tickets/dashboard.html'
     context_object_name = 'tickets'
+    paginate_by = 30
 
     def get_queryset(self):
         user = self.request.user
         qs = Ticket.objects.select_related('inquilino', 'tecnico', 'unidad__edificio')
         if user.is_admin:
-            return qs[:30]
+            return qs
         if user.is_tecnico:
-            return qs.filter(tecnico=user)[:30]
-        return qs.filter(inquilino=user)[:30]
+            return qs.filter(tecnico=user)
+        return qs.filter(inquilino=user)
+
+    def _scope(self):
+        """Queryset base filtrado por rol para KPIs."""
+        user = self.request.user
+        qs = Ticket.objects.all()
+        if user.is_tecnico:
+            qs = qs.filter(tecnico=user)
+        elif not user.is_admin:
+            qs = qs.filter(inquilino=user)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        scope = Ticket.objects.all()
-        if user.is_tecnico:
-            scope = scope.filter(tecnico=user)
-        elif not user.is_admin:
-            scope = scope.filter(inquilino=user)
-        ctx['pendientes'] = scope.filter(estado__in=[
-            TicketStatus.CREADO_PENDIENTE_IA,
-            TicketStatus.ANALIZADO_POR_IA,
-            TicketStatus.PENDIENTE_VALIDACION,
-        ]).count()
-        estados_activos = [
-            TicketStatus.ASIGNADO,
-            TicketStatus.EN_CAMINO,
-            TicketStatus.EN_PROGRESO,
-        ]
-        ctx['en_progreso'] = scope.filter(estado__in=estados_activos).count()
-        if user.is_tecnico:
-            ctx['kpi_por_iniciar'] = scope.filter(estado=TicketStatus.ASIGNADO).count()
-            ctx['kpi_en_trabajo'] = scope.filter(estado__in=[
+        scope = self._scope()
+
+        # Una sola query con aggregate en vez de múltiples count()
+        agg_kwargs = {
+            'pendientes': Count('pk', filter=Q(estado__in=[
+                TicketStatus.CREADO_PENDIENTE_IA,
+                TicketStatus.ANALIZADO_POR_IA,
+                TicketStatus.PENDIENTE_VALIDACION,
+            ])),
+            'en_progreso': Count('pk', filter=Q(estado__in=[
+                TicketStatus.ASIGNADO,
                 TicketStatus.EN_CAMINO,
                 TicketStatus.EN_PROGRESO,
-            ]).count()
-            ctx['kpi_resueltos_total'] = scope.filter(estado=TicketStatus.RESUELTO).count()
+            ])),
+            'kpi_resueltos': Count('pk', filter=Q(estado=TicketStatus.RESUELTO)),
+        }
+        if user.is_tecnico:
+            agg_kwargs.update({
+                'kpi_por_iniciar': Count('pk', filter=Q(estado=TicketStatus.ASIGNADO)),
+                'kpi_en_trabajo': Count('pk', filter=Q(estado__in=[
+                    TicketStatus.EN_CAMINO,
+                    TicketStatus.EN_PROGRESO,
+                ])),
+                'kpi_resueltos_total': Count('pk', filter=Q(estado=TicketStatus.RESUELTO)),
+            })
+
+        ctx.update(scope.aggregate(**agg_kwargs))
         return ctx

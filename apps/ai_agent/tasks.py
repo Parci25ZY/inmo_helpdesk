@@ -41,10 +41,14 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
 
     tecnicos = list(
         CustomUser.objects.filter(role=CustomUser.Roles.TECNICO, is_active=True)
-        .values('id', 'first_name', 'last_name')
+        .values('id', 'first_name', 'last_name', 'especialidad')
     )
     tecnicos_data = [
-        {'id': t['id'], 'nombre': f"{t['first_name']} {t['last_name']}".strip()}
+        {
+            'id': t['id'],
+            'nombre': f"{t['first_name']} {t['last_name']}".strip(),
+            'especialidad': t.get('especialidad', ''),
+        }
         for t in tecnicos
     ]
 
@@ -74,11 +78,17 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
         'ia_descripcion_tecnica', 'ia_razon_asignacion', 'ia_confianza',
     ]
 
+    # Asignar categoría y prioridad al ticket basándose en la IA
+    ticket.categoria = ticket.ia_categoria_sugerida
+    ticket.prioridad = ticket.ia_prioridad_sugerida
+    update_fields.extend(['categoria', 'prioridad'])
+
     tecnico_id = resultado.get('tecnico_sugerido_id') or 0
+    tecnico_asignado = None
     if tecnico_id:
         try:
-            tecnico = CustomUser.objects.get(pk=tecnico_id, role=CustomUser.Roles.TECNICO, is_active=True)
-            ticket.ia_tecnico_sugerido = tecnico
+            tecnico_asignado = CustomUser.objects.get(pk=tecnico_id, role=CustomUser.Roles.TECNICO, is_active=True)
+            ticket.ia_tecnico_sugerido = tecnico_asignado
             update_fields.append('ia_tecnico_sugerido')
         except CustomUser.DoesNotExist:
             pass
@@ -91,11 +101,38 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     except InvalidTransitionError:
         pass
 
+    # Auto-asignación: si confianza >= 0.8 y hay técnico sugerido válido
+    confianza = resultado.get('confianza', 0) or 0
+    if confianza >= 0.8 and tecnico_asignado is not None:
+        ticket.tecnico = tecnico_asignado
+        ticket.save(update_fields=['tecnico'])
+        try:
+            transition_ticket(
+                ticket,
+                nuevo_estado=TicketStatus.ASIGNADO,
+                actor_role='SYSTEM',
+                nota=f'Auto-asignado por IA a {tecnico_asignado.get_full_name()} (confianza: {confianza:.2f}).',
+            )
+        except InvalidTransitionError:
+            pass
+    else:
+        # Confianza baja o sin técnico → pasa a validación del admin
+        try:
+            transition_ticket(
+                ticket,
+                nuevo_estado=TicketStatus.PENDIENTE_VALIDACION,
+                actor_role='SYSTEM',
+                nota='Pendiente de validación manual por el administrador.',
+            )
+        except InvalidTransitionError:
+            pass
+
     return {
         'ticket_id': ticket_id,
         'categoria': ticket.ia_categoria_sugerida,
         'prioridad': ticket.ia_prioridad_sugerida,
         'confianza': str(ticket.ia_confianza),
+        'auto_asignado': confianza >= 0.8 and tecnico_asignado is not None,
     }
 
 

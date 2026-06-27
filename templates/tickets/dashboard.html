@@ -73,7 +73,7 @@
                 </article>
             </div>
             {% else %}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <article class="relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 rounded-[2rem] p-8 border border-amber-100/50 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
                     <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-amber-500/10 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <div class="relative z-10 flex flex-col h-full justify-between">
@@ -97,6 +97,21 @@
                         <div class="flex items-baseline gap-3">
                             <p class="text-6xl font-black text-indigo-600 tracking-tighter">{{ en_progreso }}</p>
                             <p class="text-sm font-medium text-indigo-700/60 leading-tight">tickets<br>atendiéndose</p>
+                        </div>
+                    </div>
+                </article>
+                <article class="relative overflow-hidden bg-emerald-50 rounded-[2rem] p-8 border border-emerald-200 hover:scale-[1.02] transition-transform duration-300 shadow-sm">
+                    <svg class="absolute -right-6 -bottom-6 w-40 h-40 text-emerald-300 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-500 shadow-sm flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <h3 class="text-base font-bold text-emerald-900">Resueltos</h3>
+                        </div>
+                        <div class="flex items-baseline gap-3">
+                            <p class="text-6xl font-black text-emerald-700 tracking-tighter">{{ kpi_resueltos }}</p>
+                            <p class="text-sm font-medium text-emerald-600 leading-tight">tickets<br>completados</p>
                         </div>
                     </div>
                 </article>
@@ -166,7 +181,7 @@
                             <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Estado</th>
                             <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-32">Prioridad</th>
                             {% if request.user.is_admin or request.user.is_tecnico %}
-                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Inquilino</th>
+                            <th class="py-4 px-6 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-zinc-500 w-44">Residente</th>
                             {% endif %}
                         </tr>
                     </thead>

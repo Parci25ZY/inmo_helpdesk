@@ -28,7 +28,7 @@
                         <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-2">Unidad a eliminar</p>
                         <p class="text-sm font-bold text-zinc-900">{{ unidad.edificio.nombre }} · #{{ unidad.numero }}</p>
                         <p class="text-xs font-mono text-zinc-500 mt-1">Piso {{ unidad.piso }} · {{ unidad.get_tipo_display }}</p>
-                        {% if unidad.inquilino %}<p class="text-xs text-amber-700 mt-2">Inquilino: {{ unidad.inquilino.get_full_name }}</p>{% endif %}
+                        {% if unidad.inquilino %}<p class="text-xs text-amber-700 mt-2">Residente: {{ unidad.inquilino.get_full_name }}</p>{% endif %}
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3">
                         <a href="{% url 'unidad_list' %}" class="flex-1 inline-flex items-center justify-center border border-zinc-300 px-5 py-3 text-sm font-semibold tracking-wide uppercase text-zinc-700 hover:border-zinc-900 hover:text-zinc-900 transition-all">Cancelar</a>

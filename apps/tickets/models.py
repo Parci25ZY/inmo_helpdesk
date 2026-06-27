@@ -31,7 +31,6 @@ class TicketPriority(models.TextChoices):
     BAJA = 'BAJA', _('Baja')
     MEDIA = 'MEDIA', _('Media')
     ALTA = 'ALTA', _('Alta')
-    CRITICA = 'CRITICA', _('Crítica')
 
 
 class TicketCategory(models.TextChoices):

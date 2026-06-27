@@ -87,7 +87,7 @@ class Unidad(models.Model):
         blank=True,
         related_name='unidad_asignada',
         limit_choices_to={'role': 'INQUILINO'},
-        verbose_name=_('Inquilino asignado'),
+        verbose_name=_('Residente asignado'),
     )
     activo = models.BooleanField(_('Activa'), default=True)
 

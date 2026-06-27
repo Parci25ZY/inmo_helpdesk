@@ -2,12 +2,12 @@
 
 Cada formulario está pensado para un rol/contexto específico:
 
-* :class:`TicketCreateForm` — el inquilino reporta un nuevo ticket.
+* :class:`TicketCreateForm` — el residente reporta un nuevo ticket.
 * :class:`TicketAdminValidateForm` — el administrador valida la sugerencia
   IA y asigna técnico (transición PENDIENTE_VALIDACION → ASIGNADO).
 * :class:`TicketTransitionForm` — wrapper genérico para añadir notas a
   cualquier transición de estado.
-* :class:`MensajeForm` — mensaje en el hilo de comunicación técnico ↔ inquilino.
+* :class:`MensajeForm` — mensaje en el hilo de comunicación técnico ↔ residente.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ TEXTAREA_CLASS = INPUT_CLASS + ' min-h-[140px] resize-y'
 
 
 class TicketCreateForm(forms.ModelForm):
-    """Formulario público para creación de tickets por parte del inquilino."""
+    """Formulario público para creación de tickets por parte del residente."""
 
     def __init__(self, *args, inquilino=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,7 +47,7 @@ class TicketCreateForm(forms.ModelForm):
 
     class Meta:
         model = Ticket
-        fields = ['unidad', 'titulo', 'descripcion', 'prioridad']
+        fields = ['unidad', 'titulo', 'descripcion']
         widgets = {
             'unidad': forms.Select(attrs={'class': SELECT_CLASS}),
             'titulo': forms.TextInput(attrs={
@@ -60,7 +60,6 @@ class TicketCreateForm(forms.ModelForm):
                 'placeholder': 'Describe con detalle qué ocurre, dónde y cuándo empezó.',
                 'rows': 5,
             }),
-            'prioridad': forms.Select(attrs={'class': SELECT_CLASS}),
         }
 
 
@@ -120,7 +119,7 @@ class TicketResolutionForm(forms.ModelForm):
 
 
 class MensajeForm(forms.ModelForm):
-    """Mensaje en el hilo de comunicación técnico ↔ inquilino."""
+    """Mensaje en el hilo de comunicación técnico ↔ residente."""
 
     class Meta:
         model = MensajeTicket

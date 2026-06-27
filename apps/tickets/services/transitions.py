@@ -23,6 +23,7 @@ _TRANSITIONS: Mapping[str, Set[str]] = {
     },
     TicketStatus.ANALIZADO_POR_IA: {
         TicketStatus.PENDIENTE_VALIDACION,
+        TicketStatus.ASIGNADO,  # auto-asignación IA con alta confianza
         TicketStatus.CANCELADO,
     },
     TicketStatus.PENDIENTE_VALIDACION: {
@@ -51,6 +52,7 @@ _ROLE_RULES: Mapping[tuple[str, str], Set[str]] = {
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.ANALIZADO_POR_IA): {'SYSTEM'},
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.PENDIENTE_VALIDACION): {'SYSTEM', 'ADMIN'},
     (TicketStatus.ANALIZADO_POR_IA, TicketStatus.PENDIENTE_VALIDACION): {'SYSTEM', 'ADMIN'},
+    (TicketStatus.ANALIZADO_POR_IA, TicketStatus.ASIGNADO): {'SYSTEM', 'ADMIN'},
     (TicketStatus.PENDIENTE_VALIDACION, TicketStatus.ASIGNADO): {'ADMIN'},
     (TicketStatus.ASIGNADO, TicketStatus.EN_CAMINO): {'TECNICO', 'ADMIN'},
     (TicketStatus.EN_CAMINO, TicketStatus.EN_PROGRESO): {'TECNICO', 'ADMIN'},
@@ -78,7 +80,7 @@ def allowed_transitions_for(ticket: Ticket, *, role: str | None = None) -> Itera
     permitidos = []
     for destino in destinos:
         roles_ok = _role_allowed_for(ticket.estado, destino)
-        if role in roles_ok or 'SYSTEM' in roles_ok and role == 'SYSTEM':
+        if role in roles_ok or (role == 'SYSTEM' and 'SYSTEM' in roles_ok):
             permitidos.append(destino)
     return permitidos
 
@@ -129,9 +131,11 @@ def transition_ticket(
         )
 
     ticket.estado = nuevo_estado
+    update_fields = ['estado', 'actualizado_en']
     if nuevo_estado == TicketStatus.RESUELTO and ticket.resuelto_en is None:
         ticket.resuelto_en = timezone.now()
-    ticket.save(update_fields=['estado', 'resuelto_en', 'actualizado_en'])
+        update_fields.append('resuelto_en')
+    ticket.save(update_fields=update_fields)
 
     HistorialEstado.objects.create(
         ticket=ticket,

@@ -103,7 +103,7 @@ def generate_chat_response(
                     },
                     'prioridad_sugerida': {
                         'type': 'STRING',
-                        'description': 'BAJA|MEDIA|ALTA|CRITICA',
+                        'description': 'BAJA|MEDIA|ALTA',
                     },
                     'confianza': {
                         'type': 'NUMBER',
@@ -153,7 +153,10 @@ def analyze_ticket_description(
 
     tecnicos_bloque = ''
     if tecnicos:
-        lineas = [f'  - ID {t["id"]}: {t["nombre"]}' for t in tecnicos]
+        lineas = [
+            f'  - ID {t["id"]}: {t["nombre"]} (Especialidad: {t.get("especialidad", "Sin definir")})'
+            for t in tecnicos
+        ]
         tecnicos_bloque = 'Técnicos disponibles:\n' + '\n'.join(lineas) + '\n\n'
 
     prompt = (
@@ -161,14 +164,15 @@ def analyze_ticket_description(
         f'TÍTULO: {titulo}\n'
         f'DESCRIPCIÓN: {descripcion}\n\n'
         f'{tecnicos_bloque}'
-        f'Clasifica con precisión según el problema descrito y devuelve JSON.'
+        f'Clasifica con precisión según el problema descrito y devuelve JSON. '
+        f'Para tecnico_sugerido_id, prioriza técnicos cuya especialidad coincida con la categoría del ticket.'
     )
 
     system = (
         'Eres un experto en mantenimiento inmobiliario. '
         'Analiza tickets de soporte y clasifícalos con precisión.\n'
         'Prioridades: BAJA (cosmético/estético), MEDIA (afecta confort), '
-        'ALTA (funcionalidad esencial comprometida), CRITICA (riesgo de seguridad o daño grave inmediato).\n'
+        'ALTA (funcionalidad esencial comprometida o riesgo de seguridad).\n'
         'Categorías: PLOMERIA, ELECTRICIDAD, INFRAESTRUCTURA, LIMPIEZA, SEGURIDAD, OTRO.\n'
         'Responde exclusivamente en JSON según el esquema solicitado. Sin texto adicional.'
     )
@@ -189,7 +193,7 @@ def analyze_ticket_description(
                     },
                     'prioridad_sugerida': {
                         'type': 'STRING',
-                        'description': 'BAJA|MEDIA|ALTA|CRITICA',
+                        'description': 'BAJA|MEDIA|ALTA',
                     },
                     'descripcion_tecnica': {
                         'type': 'STRING',

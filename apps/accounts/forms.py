@@ -23,7 +23,7 @@ class UserEditForm(UserChangeForm):
     
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'phone', 'role', 'is_active', 'is_staff']
+        fields = ['first_name', 'last_name', 'email', 'phone', 'role', 'especialidad', 'is_active', 'is_staff']
         widgets = {
             'first_name': forms.TextInput(attrs={
                 'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
@@ -49,6 +49,9 @@ class UserEditForm(UserChangeForm):
             }),
             'is_staff': forms.CheckboxInput(attrs={
                 'class': 'form-checkbox h-5 w-5 text-primary'
+            }),
+            'especialidad': forms.Select(attrs={
+                'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal'
             }),
         }
 
@@ -79,7 +82,7 @@ class UserCreateForm(UserCreationForm):
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'first_name', 'last_name', 'phone', 'role']
+        fields = ['email', 'first_name', 'last_name', 'phone', 'role', 'especialidad']
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': _INPUT_CLASS,
@@ -100,4 +103,49 @@ class UserCreateForm(UserCreationForm):
             'role': forms.Select(attrs={
                 'class': _SELECT_CLASS,
             }),
+            'especialidad': forms.Select(attrs={
+                'class': _SELECT_CLASS,
+            }),
         }
+
+
+_PROFILE_INPUT_CLASS = (
+    'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden '
+    'rounded-lg text-text-dark dark:text-text-light focus:outline-0 '
+    'focus:ring-2 focus:ring-primary/50 border border-zinc-300 '
+    'dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 '
+    'placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 '
+    'text-base font-normal'
+)
+
+
+class ProfileEditForm(forms.ModelForm):
+    """Formulario seguro para que el usuario edite su propio perfil.
+
+    Solo expone campos de información personal (nombre, email, teléfono).
+    No incluye role, is_active, is_staff ni especialidad para evitar
+    escalación de privilegios.
+    """
+
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'email', 'phone']
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': _PROFILE_INPUT_CLASS,
+                'placeholder': 'Nombres',
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': _PROFILE_INPUT_CLASS,
+                'placeholder': 'Apellidos',
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': _PROFILE_INPUT_CLASS,
+                'placeholder': 'Correo Electrónico',
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': _PROFILE_INPUT_CLASS,
+                'placeholder': 'Teléfono',
+            }),
+        }
+

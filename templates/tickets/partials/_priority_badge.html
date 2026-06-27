@@ -2,13 +2,10 @@
   Badge de prioridad. Args: prioridad (string), display (string)
 {% endcomment %}
 <span class="inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap
-    {% if prioridad == 'CRITICA' %}text-red-700
-    {% elif prioridad == 'ALTA' %}text-orange-700
+    {% if prioridad == 'ALTA' %}text-orange-700
     {% elif prioridad == 'MEDIA' %}text-zinc-700
     {% else %}text-zinc-500{% endif %}">
-    {% if prioridad == 'CRITICA' %}
-        <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span></span>
-    {% elif prioridad == 'ALTA' %}
+    {% if prioridad == 'ALTA' %}
         <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
     {% elif prioridad == 'MEDIA' %}
         <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>

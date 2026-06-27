@@ -33,8 +33,16 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Roles(models.TextChoices):
         ADMIN = 'ADMIN', _('Administrador')
-        INQUILINO = 'INQUILINO', _('Inquilino')
+        INQUILINO = 'INQUILINO', _('Residente')
         TECNICO = 'TECNICO', _('Técnico')
+
+    class Especialidad(models.TextChoices):
+        PLOMERIA = 'PLOMERIA', _('Plomería')
+        ELECTRICIDAD = 'ELECTRICIDAD', _('Electricidad')
+        INFRAESTRUCTURA = 'INFRAESTRUCTURA', _('Infraestructura')
+        LIMPIEZA = 'LIMPIEZA', _('Limpieza')
+        SEGURIDAD = 'SEGURIDAD', _('Seguridad')
+        OTRO = 'OTRO', _('Otro')
 
     email = models.EmailField(_('Correo Electrónico'), unique=True)
     first_name = models.CharField(_('Nombres'), max_length=150, blank=True)
@@ -45,6 +53,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=20,
         choices=Roles.choices,
         default=Roles.INQUILINO,
+    )
+    especialidad = models.CharField(
+        _('Especialidad'),
+        max_length=20,
+        choices=Especialidad.choices,
+        blank=True,
+        default='',
+        help_text=_('Solo aplica para técnicos. Define su área de competencia.'),
     )
     is_active = models.BooleanField(_('Activo'), default=True)
     is_staff = models.BooleanField(_('Staff'), default=False)
@@ -74,6 +90,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     @property
     def is_inquilino(self) -> bool:
         return self.role == self.Roles.INQUILINO
+
+    @property
+    def is_residente(self) -> bool:
+        """Alias de is_inquilino para la nueva terminología."""
+        return self.is_inquilino
 
     @property
     def is_tecnico(self) -> bool:
