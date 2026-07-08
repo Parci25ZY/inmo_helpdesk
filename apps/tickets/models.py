@@ -20,6 +20,7 @@ class TicketStatus(models.TextChoices):
     CREADO_PENDIENTE_IA = 'CREADO_PENDIENTE_IA', _('Creado · Pendiente IA')
     ANALIZADO_POR_IA = 'ANALIZADO_POR_IA', _('Analizado por IA')
     PENDIENTE_VALIDACION = 'PENDIENTE_VALIDACION', _('Pendiente Validación')
+    APROBADO = 'APROBADO', _('Aprobado · Pendiente Agenda')
     ASIGNADO = 'ASIGNADO', _('Asignado')
     EN_CAMINO = 'EN_CAMINO', _('En Camino')
     EN_PROGRESO = 'EN_PROGRESO', _('En Progreso')
@@ -126,9 +127,34 @@ class Ticket(models.Model):
     notas_resolucion = models.TextField(_('Notas de resolución'), blank=True)
     resuelto_en = models.DateTimeField(_('Fecha de resolución'), null=True, blank=True)
 
+    # ── Programación de visita ─────────────────────────────────────────
+    fecha_programada = models.DateField(
+        _('Fecha programada'),
+        null=True,
+        blank=True,
+        help_text=_('Fecha en la que el técnico visitará la unidad.'),
+    )
+    hora_programada_inicio = models.TimeField(
+        _('Hora inicio programada'),
+        null=True,
+        blank=True,
+    )
+    hora_programada_fin = models.TimeField(
+        _('Hora fin programada'),
+        null=True,
+        blank=True,
+    )
+
     # ── Auditoría ───────────────────────────────────────────────────────
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+
+    # Duración de visita según prioridad (en horas)
+    VISIT_DURATION: dict[str, int] = {
+        'BAJA': 1,
+        'MEDIA': 2,
+        'ALTA': 3,
+    }
 
     class Meta:
         verbose_name = _('Ticket')
@@ -157,6 +183,11 @@ class Ticket(models.Model):
     @property
     def is_pendiente_validacion(self) -> bool:
         return self.estado == TicketStatus.PENDIENTE_VALIDACION
+
+    @property
+    def is_aprobado(self) -> bool:
+        """True cuando el admin aprobó pero el inquilino aún no agendó."""
+        return self.estado == TicketStatus.APROBADO
 
 
 def evidencia_upload_path(instance: 'EvidenciaTicket', filename: str) -> str:
@@ -267,3 +298,44 @@ class HistorialEstado(models.Model):
 
     def __str__(self) -> str:
         return f'{self.ticket.codigo}: {self.estado_anterior or "—"} → {self.estado_nuevo}'
+
+
+class TipoAlerta(models.TextChoices):
+    INFO = 'INFO', _('Informativo')
+    WARNING = 'WARNING', _('Requiere Atención')
+    SUCCESS = 'SUCCESS', _('Éxito')
+    ERROR = 'ERROR', _('Crítico')
+
+
+class Notificacion(models.Model):
+    """Notificaciones dentro del sistema para el usuario."""
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notificaciones',
+    )
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notificaciones',
+    )
+    mensaje = models.CharField(_('Mensaje'), max_length=255)
+    descripcion = models.TextField(_('Descripción'), blank=True)
+    tipo_alerta = models.CharField(
+        _('Tipo de Alerta'),
+        max_length=20,
+        choices=TipoAlerta.choices,
+        default=TipoAlerta.INFO,
+    )
+    leido = models.BooleanField(_('Leído'), default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Notificación')
+        verbose_name_plural = _('Notificaciones')
+        ordering = ['-creado_en']
+
+    def __str__(self) -> str:
+        return f'{self.usuario.email} - {self.tipo_alerta}: {self.mensaje}'

@@ -23,10 +23,13 @@ _TRANSITIONS: Mapping[str, Set[str]] = {
     },
     TicketStatus.ANALIZADO_POR_IA: {
         TicketStatus.PENDIENTE_VALIDACION,
-        TicketStatus.ASIGNADO,  # auto-asignación IA con alta confianza
         TicketStatus.CANCELADO,
     },
     TicketStatus.PENDIENTE_VALIDACION: {
+        TicketStatus.APROBADO,
+        TicketStatus.CANCELADO,
+    },
+    TicketStatus.APROBADO: {
         TicketStatus.ASIGNADO,
         TicketStatus.CANCELADO,
     },
@@ -52,11 +55,11 @@ _ROLE_RULES: Mapping[tuple[str, str], Set[str]] = {
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.ANALIZADO_POR_IA): {'SYSTEM'},
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.PENDIENTE_VALIDACION): {'SYSTEM', 'ADMIN'},
     (TicketStatus.ANALIZADO_POR_IA, TicketStatus.PENDIENTE_VALIDACION): {'SYSTEM', 'ADMIN'},
-    (TicketStatus.ANALIZADO_POR_IA, TicketStatus.ASIGNADO): {'SYSTEM', 'ADMIN'},
-    (TicketStatus.PENDIENTE_VALIDACION, TicketStatus.ASIGNADO): {'ADMIN'},
-    (TicketStatus.ASIGNADO, TicketStatus.EN_CAMINO): {'TECNICO', 'ADMIN'},
-    (TicketStatus.EN_CAMINO, TicketStatus.EN_PROGRESO): {'TECNICO', 'ADMIN'},
-    (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO): {'TECNICO', 'ADMIN'},
+    (TicketStatus.PENDIENTE_VALIDACION, TicketStatus.APROBADO): {'ADMIN'},
+    (TicketStatus.APROBADO, TicketStatus.ASIGNADO): {'INQUILINO'},
+    (TicketStatus.ASIGNADO, TicketStatus.EN_CAMINO): {'TECNICO'},
+    (TicketStatus.EN_CAMINO, TicketStatus.EN_PROGRESO): {'TECNICO'},
+    (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO): {'TECNICO'},
 }
 # La cancelación está permitida desde cualquier no-terminal para ADMIN.
 
@@ -92,6 +95,10 @@ def _role_allowed_for(origen: str, destino: str) -> Set[str]:
     return _ROLE_RULES.get((origen, destino), set())
 
 
+class WorkloadExceededError(Exception):
+    """El técnico no tiene capacidad para aceptar más tickets."""
+
+
 @transaction.atomic
 def transition_ticket(
     ticket: Ticket,
@@ -114,6 +121,7 @@ def transition_ticket(
     Raises:
         InvalidTransitionError: si la transición no existe.
         TransitionPermissionError: si el rol no puede ejecutarla.
+        WorkloadExceededError: si el técnico asignado supera su límite de carga.
     """
     estado_actual = ticket.estado
     if nuevo_estado not in _TRANSITIONS.get(estado_actual, set()):
@@ -130,6 +138,20 @@ def transition_ticket(
             f'El rol {actor_role} no puede ejecutar la transición {estado_actual} → {nuevo_estado}.'
         )
 
+    # Validar carga de trabajo al asignar
+    if nuevo_estado == TicketStatus.ASIGNADO:
+        if not ticket.tecnico:
+            raise InvalidTransitionError(
+                'No se puede asignar un ticket sin técnico.'
+            )
+        if not ticket.tecnico.puede_aceptar_ticket(ticket.prioridad):
+            raise WorkloadExceededError(
+                f'{ticket.tecnico.get_full_name()} ha alcanzado su límite de '
+                f'carga de trabajo ({ticket.tecnico.carga_trabajo_actual}/'
+                f'{ticket.tecnico.max_carga_trabajo} puntos). '
+                f'Selecciona otro técnico o ajusta su límite.'
+            )
+
     ticket.estado = nuevo_estado
     update_fields = ['estado', 'actualizado_en']
     if nuevo_estado == TicketStatus.RESUELTO and ticket.resuelto_en is None:
@@ -144,4 +166,14 @@ def transition_ticket(
         actor=actor if actor and actor.is_authenticated else None,
         nota=nota,
     )
+
+    # ── Notificaciones automáticas in-app ──
+    from apps.tickets.services.notify import notify_transition
+    notify_transition(
+        ticket,
+        estado_anterior=estado_actual,
+        nuevo_estado=nuevo_estado,
+        actor=actor,
+    )
+
     return ticket

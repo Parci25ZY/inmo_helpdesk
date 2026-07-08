@@ -1,0 +1,255 @@
+<!-- ── Selector de Horario por Bloques — Auto-agenda Inteligente ──────── -->
+<div id="schedule-picker-panel" class="bg-white border border-zinc-200 my-6 overflow-hidden">
+
+    <!-- Accent bar — matches zinc-950 + amber-400 from site header -->
+    <div class="bg-zinc-950 px-6 py-4 border-b-[3px] border-amber-400">
+        <div class="flex items-center gap-2.5 mb-1">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+            </span>
+            <p class="text-[0.65rem] font-mono tracking-[0.2em] uppercase text-amber-300/90 font-bold"
+               style="font-family: 'DM Mono', monospace;">
+                Paso Final · Agendar Visita
+            </p>
+        </div>
+        <h3 class="text-lg font-bold tracking-tight text-white flex flex-wrap items-center gap-3"
+            style="font-family: 'Space Grotesk', sans-serif;">
+            Selecciona tu horario
+            <span class="text-[0.65rem] font-mono px-2 py-0.5 bg-amber-400/15 text-amber-300 border border-amber-400/40"
+                  style="font-family: 'DM Mono', monospace;">
+                {{ duracion_visita }} bloque{{ duracion_visita|pluralize:"s" }} · {{ ticket.get_prioridad_display }}
+            </span>
+        </h3>
+        <p class="text-xs text-zinc-400 mt-1.5" style="font-family: 'Space Grotesk', sans-serif;">
+            Técnico asignado: <strong class="text-white">{{ ticket.tecnico.get_full_name }}</strong>
+            <span class="text-zinc-600 mx-1">·</span>
+            {{ ticket.tecnico.especialidades_display|default:"Soporte Técnico" }}
+        </p>
+    </div>
+
+    <!-- Content area — light theme matching rest of detail page -->
+    <div class="p-6 sm:p-8 space-y-6">
+
+        <!-- ═══ LEYENDA ══════════════════════════════════════════════════ -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.65rem] font-bold tracking-[0.15em] uppercase text-zinc-400"
+             style="font-family: 'DM Mono', monospace;">
+            <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 bg-emerald-100 border-2 border-emerald-500"></span>
+                Disponible
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 bg-red-100 border-2 border-red-400"></span>
+                Ocupado
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 bg-amber-50 border-2 border-amber-400"
+                      style="background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(245,158,11,0.2) 2px, rgba(245,158,11,0.2) 4px);"></span>
+                Traslado
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 bg-zinc-100 border-2 border-zinc-300"></span>
+                Pasado
+            </span>
+        </div>
+
+        <!-- ═══ ALERTA POSTERGACIÓN ══════════════════════════════════════ -->
+        {% if dias_postergados > 0 %}
+        <div class="bg-amber-50 border border-amber-300 p-4 flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <p class="text-sm font-bold text-amber-800">Sin disponibilidad para hoy</p>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    Próximo horario en
+                    <strong class="text-zinc-900 font-mono">{{ dias_postergados }} día{{ dias_postergados|pluralize:"s" }}</strong>
+                    → {{ primer_dia_disponible|date:"l d/m/Y" }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ═══ SUGERENCIA RÁPIDA ════════════════════════════════════════ -->
+        {% if sugerencia_auto %}
+        <div class="bg-zinc-50 border border-zinc-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <span class="text-[0.6rem] font-bold tracking-[0.2em] uppercase px-2 py-0.5 bg-zinc-950 text-amber-300 font-mono inline-flex items-center gap-1.5"
+                      style="font-family: 'DM Mono', monospace;">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Sugerencia IA
+                </span>
+                <p class="text-sm text-zinc-600 mt-2" style="font-family: 'Space Grotesk', sans-serif;">
+                    <strong class="text-zinc-900">{{ sugerencia_auto.fecha|date:"l d/m/Y" }}</strong>
+                    <span class="text-zinc-300 mx-1">·</span>
+                    <span class="text-zinc-900 font-mono font-bold">{{ sugerencia_auto.hora_inicio|time:"H:i" }}</span>
+                    <span class="text-zinc-400 mx-0.5">→</span>
+                    <span class="text-zinc-900 font-mono font-bold">{{ sugerencia_auto.hora_fin|time:"H:i" }}</span>
+                </p>
+            </div>
+            <button type="button"
+                    onclick="agendarVisitaInquilino('{{ sugerencia_auto.fecha|date:'Y-m-d' }}', '{{ sugerencia_auto.hora_inicio|time:'H:i' }}', '{{ sugerencia_auto.hora_fin|time:'H:i' }}')"
+                    class="bg-zinc-950 hover:bg-zinc-800 text-amber-300 hover:text-amber-200 px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider transition-all border border-zinc-800 hover:border-zinc-700 shadow-sm shrink-0 flex items-center gap-2 cursor-pointer"
+                    style="font-family: 'DM Mono', monospace;">
+                Agendar ahora
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- ═══ DÍAS CON DISPONIBILIDAD ══════════════════════════════════ -->
+        <div class="space-y-4">
+            <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2"
+               style="font-family: 'DM Mono', monospace;">
+                Horarios disponibles
+            </p>
+
+            {% for info in dias_disponibles %}
+            <div class="border border-zinc-200 hover:border-zinc-300 transition-colors duration-200 bg-white">
+
+                <!-- Day header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-sm font-bold text-zinc-900" style="font-family: 'Space Grotesk', sans-serif;">{{ info.dia_label }}</span>
+                        <span class="text-xs font-mono text-zinc-500" style="font-family: 'DM Mono', monospace;">{{ info.fecha|date:"d/m/Y" }}</span>
+                        {% if primer_dia_disponible and info.fecha == primer_dia_disponible and dias_postergados > 0 %}
+                        <span class="text-[0.6rem] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400 text-zinc-900"
+                              style="font-family: 'DM Mono', monospace;">← Próximo</span>
+                        {% endif %}
+                    </div>
+                    <span class="text-[0.6rem] font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 border border-zinc-200"
+                          style="font-family: 'DM Mono', monospace;">
+                        {{ info.slots_validos|length }} opción{{ info.slots_validos|length|pluralize:"es" }}
+                    </span>
+                </div>
+
+                <div class="px-5 py-4">
+                    <!-- Visual timeline — mini blocks showing the full day -->
+                    <div class="flex gap-[3px] mb-4">
+                        {% for bloque in info.bloques %}
+                        <div class="h-8 flex-1 flex items-center justify-center text-[0.55rem] font-mono transition-all duration-150
+                            {% if bloque.estado == 'libre' %}
+                                bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100
+                            {% elif bloque.estado == 'buffer' %}
+                                bg-amber-50 border border-amber-300 text-amber-700
+                            {% elif bloque.estado == 'pasado' %}
+                                bg-zinc-100 border border-zinc-200 text-zinc-400 line-through
+                            {% else %}
+                                bg-red-50 border border-red-300 text-red-600
+                            {% endif %}"
+                            {% if bloque.estado == 'buffer' %}
+                            style="background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(245,158,11,0.12) 3px, rgba(245,158,11,0.12) 6px); font-family: 'DM Mono', monospace;"
+                            {% else %}
+                            style="font-family: 'DM Mono', monospace;"
+                            {% endif %}
+                            title="{% if bloque.estado == 'libre' %}Disponible{% elif bloque.estado == 'buffer' %}Traslado (30 min){% elif bloque.estado == 'pasado' %}Hora pasada{% else %}Ocupado: {{ bloque.ticket_titulo }}{% endif %} · {{ bloque.hora_inicio|time:'H:i' }}–{{ bloque.hora_fin|time:'H:i' }}">
+                            {{ bloque.hora_inicio|time:"H:i" }}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Botones de slots agendables -->
+                    <div class="flex flex-wrap gap-2">
+                        {% for slot in info.slots_validos %}
+                        <button type="button"
+                                onclick="agendarVisitaInquilino('{{ info.fecha|date:'Y-m-d' }}', '{{ slot.hora_inicio|time:'H:i' }}', '{{ slot.hora_fin|time:'H:i' }}')"
+                                class="group/btn relative px-4 py-2.5 text-xs font-mono bg-white border border-zinc-200 hover:border-amber-400 hover:bg-amber-50 transition-all duration-200 cursor-pointer flex items-center gap-2.5 shadow-sm hover:shadow-md"
+                                style="font-family: 'DM Mono', monospace;"
+                                title="Agendar: {{ info.dia_label }} {{ info.fecha|date:'d/m/Y' }} · {{ slot.hora_inicio|time:'H:i' }} – {{ slot.hora_fin|time:'H:i' }}">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 group-hover/btn:bg-amber-400 group-hover/btn:scale-125 transition-all duration-200"></span>
+                            <span class="font-bold text-zinc-900">
+                                {{ slot.hora_inicio|time:"H:i" }} – {{ slot.hora_fin|time:"H:i" }}
+                            </span>
+                            <span class="text-[0.55rem] uppercase tracking-wider px-1.5 py-0.5 bg-zinc-950 text-amber-300 group-hover/btn:bg-amber-400 group-hover/btn:text-zinc-900 font-bold transition-colors">
+                                Agendar →
+                            </span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="py-10 text-center border border-dashed border-zinc-300 bg-zinc-50">
+                <svg class="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <p class="text-sm font-medium text-zinc-500 mb-1" style="font-family: 'Space Grotesk', sans-serif;">Sin disponibilidad en los próximos 14 días</p>
+                <p class="text-xs text-zinc-400">Usa el chat para coordinar un horario alternativo con el administrador.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ═══ DÍAS SIN DISPONIBILIDAD ══════════════════════════════════ -->
+        {% if dias_ocupados %}
+        <details class="group">
+            <summary class="text-[0.65rem] font-mono uppercase tracking-[0.2em] text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors flex items-center gap-2 select-none py-2"
+                     style="font-family: 'DM Mono', monospace;">
+                <svg class="w-3 h-3 transition-transform group-open:rotate-90 text-zinc-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Días sin disponibilidad ({{ dias_ocupados|length }})
+            </summary>
+            <div class="mt-2 space-y-1.5">
+                {% for info in dias_ocupados %}
+                <div class="bg-zinc-50 border border-zinc-200 px-4 py-2.5 flex items-center justify-between opacity-60">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                        <span class="text-xs font-medium text-zinc-500" style="font-family: 'Space Grotesk', sans-serif;">{{ info.dia_label }}</span>
+                        <span class="text-xs font-mono text-zinc-400" style="font-family: 'DM Mono', monospace;">{{ info.fecha|date:"d/m/Y" }}</span>
+                    </div>
+                    <span class="text-[0.6rem] font-mono text-zinc-500 bg-white px-2 py-0.5 border border-zinc-200"
+                          style="font-family: 'DM Mono', monospace;">
+                        {{ info.razon }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+
+        <!-- ═══ FORMULARIO OCULTO ════════════════════════════════════════ -->
+        <form id="inquilino-schedule-form" method="POST" action="{% url 'ticket_schedule' ticket.pk %}" class="hidden">
+            {% csrf_token %}
+            <input type="hidden" name="fecha_programada" id="inquilino_fecha">
+            <input type="hidden" name="hora_programada_inicio" id="inquilino_inicio">
+            <input type="hidden" name="hora_programada_fin" id="inquilino_fin">
+        </form>
+    </div>
+</div>
+
+<script>
+    function agendarVisitaInquilino(fecha, horaInicio, horaFin) {
+        const fechaObj = new Date(fecha + 'T00:00:00');
+        const fechaLegible = fechaObj.toLocaleDateString('es-MX', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+
+        const bloques = Math.round(
+            (new Date('1970-01-01T' + horaFin) - new Date('1970-01-01T' + horaInicio)) / 3600000
+        );
+
+        if (!confirm(
+            `¿Confirmas la visita?\n\n` +
+            `📅 ${fechaLegible}\n` +
+            `🕐 ${horaInicio} → ${horaFin} (${bloques} bloque${bloques > 1 ? 's' : ''} de 1h)\n\n` +
+            `El ticket quedará asignado en firme.`
+        )) {
+            return;
+        }
+
+        document.getElementById('inquilino_fecha').value = fecha;
+        document.getElementById('inquilino_inicio').value = horaInicio;
+        document.getElementById('inquilino_fin').value = horaFin;
+
+        // Feedback visual
+        if (event && event.currentTarget) {
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse font-bold text-zinc-500">Agendando…</span>';
+            btn.classList.add('opacity-75', 'pointer-events-none', 'bg-zinc-100');
+        }
+
+        document.getElementById('inquilino-schedule-form').submit();
+    }
+</script>

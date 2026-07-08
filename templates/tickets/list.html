@@ -25,6 +25,7 @@
     </header>
 
     <main class="flex-1 w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8 space-y-8 overflow-x-hidden {% if chatbot_habilitado %}tickets-page--with-chat{% else %}max-w-7xl{% endif %}">
+        {% include 'partials/_role_banner.html' %}
 
         {% if messages %}
         <div class="space-y-2">

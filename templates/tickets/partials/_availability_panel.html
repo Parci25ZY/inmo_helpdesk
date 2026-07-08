@@ -1,0 +1,202 @@
+<!-- ── Panel de Disponibilidad de Técnicos y Pre-asignación ───────────────── -->
+<div id="availability-panel" class="bg-zinc-900 text-white border border-zinc-800 p-6 my-6 shadow-xl rounded-none">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-zinc-800 pb-4 mb-5 gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <p class="text-[0.65rem] font-mono tracking-[0.2em] uppercase text-zinc-400">Control de Agenda · Visita Técnica</p>
+            </div>
+            <h3 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                Disponibilidad y Horarios
+                <span class="text-xs font-mono px-2 py-0.5 bg-zinc-800 text-amber-400 border border-zinc-700">
+                    Duración est.: {{ duracion_visita }}h ({{ ticket.get_prioridad_display }})
+                </span>
+            </h3>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-mono text-zinc-400">
+            <span>Ver día:</span>
+            <input type="date" id="panel-date-picker" value="{% now 'Y-m-d' %}"
+                   class="bg-zinc-800 border border-zinc-700 text-white px-2.5 py-1 text-xs font-mono rounded-none focus:outline-none focus:border-amber-400 transition-colors cursor-pointer">
+        </div>
+    </div>
+
+    <!-- Sugerencia Automática de IA -->
+    {% if horario_sugerido and ticket.ia_tecnico_sugerido %}
+    <div id="auto-suggest-box" class="bg-gradient-to-r from-violet-950/40 to-zinc-900 border border-violet-500/30 p-4 mb-6 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-24 h-24 bg-violet-500/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-[0.65rem] font-bold tracking-widest uppercase px-2 py-0.5 bg-violet-500 text-white font-mono">⚡ Pre-asignación Automática IA</span>
+                    <span class="text-xs text-violet-300 font-medium">{{ ticket.ia_tecnico_sugerido.get_full_name }}</span>
+                </div>
+                <p class="text-xs text-zinc-300">
+                    Primer espacio libre disponible: <strong class="text-white font-mono">{{ horario_sugerido.fecha|date:"d M Y" }}</strong> 
+                    de <strong class="text-amber-400 font-mono">{{ horario_sugerido.hora_inicio|time:"H:i" }}</strong> a <strong class="text-amber-400 font-mono">{{ horario_sugerido.hora_fin|time:"H:i" }}</strong>.
+                </p>
+            </div>
+            <button type="button" onclick="aplicarHorario('{{ ticket.ia_tecnico_sugerido.id }}', '{{ horario_sugerido.fecha|date:'Y-m-d' }}', '{{ horario_sugerido.hora_inicio|time:'H:i' }}', '{{ horario_sugerido.hora_fin|time:'H:i' }}')"
+                    class="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-violet-500/20 whitespace-nowrap shrink-0 flex items-center gap-2">
+                <span>Aplicar sugerencia</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Lista de Técnicos y sus Bloques Horarios -->
+    <div class="space-y-3" id="technicians-schedule-grid">
+        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-2">Técnicos Disponibles para Hoy</p>
+        
+        {% for info in disponibilidad_tecnicos %}
+        <div class="bg-zinc-800/60 border {% if info.tiene_especialidad %}border-amber-500/50 bg-zinc-800/90{% else %}border-zinc-700/60{% endif %} p-4 transition-all hover:border-zinc-500">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3 border-b border-zinc-700/50 pb-2">
+                <div class="flex items-center gap-3">
+                    <!-- Avatar / indicador -->
+                    <div class="w-8 h-8 rounded-none {% if info.tiene_especialidad %}bg-amber-400 text-zinc-900{% else %}bg-zinc-700 text-white{% endif %} flex items-center justify-center text-xs font-bold uppercase font-mono">
+                        {{ info.tecnico.first_name|slice:":1" }}{{ info.tecnico.last_name|slice:":1" }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-white">{{ info.nombre }}</span>
+                            {% if info.tiene_especialidad %}
+                            <span class="text-[0.6rem] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30">★ Especialista</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-[0.65rem] font-mono text-zinc-400">{{ info.especialidades|default:"Sin especialidad" }}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 text-xs font-mono">
+                    <!-- Estado de horario -->
+                    {% if info.disponible_ahora %}
+                    <span class="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/40 px-2 py-0.5 border border-emerald-800/50">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En horario
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 text-zinc-400 bg-zinc-800 px-2 py-0.5 border border-zinc-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> Fuera de turno
+                    </span>
+                    {% endif %}
+
+                    <!-- Carga de trabajo -->
+                    <span class="px-2 py-0.5 {% if info.carga_actual >= info.max_carga %}bg-red-950/40 text-red-400 border border-red-800/50{% elif info.carga_actual > 0 %}bg-amber-950/40 text-amber-300 border border-amber-800/50{% else %}bg-zinc-800 text-zinc-300 border border-zinc-700{% endif %}">
+                        Carga: {{ info.carga_actual }}/{{ info.max_carga }}
+                    </span>
+
+                    <button type="button" onclick="seleccionarTecnico('{{ info.tecnico.id }}')"
+                            class="text-xs font-mono uppercase underline text-amber-400 hover:text-amber-300 ml-2">
+                        Seleccionar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bloques horarios del día -->
+            <div class="mt-2">
+                {% if info.tiene_horario %}
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-[0.65rem] font-mono text-zinc-500 mr-1">Franjas:</span>
+                    {% for bloque in info.bloques %}
+                        {% if bloque.ocupado %}
+                        <div class="px-2.5 py-1 text-xs font-mono bg-red-950/50 text-red-300 border border-red-800/60 rounded-none flex items-center gap-1.5 cursor-not-allowed" title="Ocupado: {{ bloque.ticket_titulo }}">
+                            <svg class="w-3 h-3 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            <span>{{ bloque.hora_inicio|time:"H:i" }} - {{ bloque.hora_fin|time:"H:i" }} (Ocupado)</span>
+                        </div>
+                        {% else %}
+                        <button type="button" onclick="aplicarHorario('{{ info.tecnico.id }}', document.getElementById('panel-date-picker').value, '{{ bloque.hora_inicio|time:'H:i' }}', '{{ bloque.hora_fin|time:'H:i' }}')"
+                                class="px-2.5 py-1 text-xs font-mono bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 hover:border-emerald-500 rounded-none transition-colors flex items-center gap-1.5 group/btn"
+                                title="Clic para asignar en esta franja libre">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 group-hover/btn:scale-125 transition-transform"></span>
+                            <span>{{ bloque.hora_inicio|time:"H:i" }} - {{ bloque.hora_fin|time:"H:i" }} (Libre)</span>
+                        </button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs font-mono text-zinc-500 italic">No tiene horario configurado o no labora este día.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-xs font-mono text-zinc-500 py-4 text-center border border-dashed border-zinc-800">No hay técnicos activos en el sistema.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // Funciones JS para la pre-asignación y control del panel
+    function aplicarHorario(tecnicoId, fecha, horaInicio, horaFinMax) {
+        // Seleccionar técnico en el select
+        const selectTecnico = document.getElementById('id_tecnico');
+        if (selectTecnico && tecnicoId) {
+            selectTecnico.value = tecnicoId;
+        }
+
+        // Asignar fecha programada
+        const inputFecha = document.getElementById('id_fecha_programada');
+        if (inputFecha && fecha) {
+            inputFecha.value = fecha;
+        }
+
+        // Asignar hora inicio programada
+        const inputInicio = document.getElementById('id_hora_programada_inicio');
+        if (inputInicio && horaInicio) {
+            inputInicio.value = horaInicio;
+        }
+
+        // Calcular hora fin según duración estimada
+        const duracionHoras = {{ duracion_visita|default:2 }};
+        const inputFin = document.getElementById('id_hora_programada_fin');
+        if (inputFin && horaInicio) {
+            const [horas, min] = horaInicio.split(':').map(Number);
+            let finHoras = horas + duracionHoras;
+            let finMin = min;
+            if (finHoras > 23) finHoras = 23;
+            const horaFinCalc = `${String(finHoras).padStart(2, '0')}:${String(finMin).padStart(2, '0')}`;
+            inputFin.value = horaFinCalc;
+        }
+
+        // Scroll suave al formulario de validación y highlight
+        const formSection = document.querySelector('form[action*="validar"]');
+        if (formSection) {
+            formSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            formSection.classList.add('ring-4', 'ring-amber-400', 'transition-all', 'duration-500');
+            setTimeout(() => {
+                formSection.classList.remove('ring-4', 'ring-amber-400');
+            }, 1500);
+        }
+    }
+
+    function seleccionarTecnico(tecnicoId) {
+        const selectTecnico = document.getElementById('id_tecnico');
+        if (selectTecnico) {
+            selectTecnico.value = tecnicoId;
+            // Disparar evento change por si hay listeners
+            selectTecnico.dispatchEvent(new Event('change'));
+        }
+        const formSection = document.querySelector('form[action*="validar"]');
+        if (formSection) {
+            formSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    // Actualización dinámica al cambiar fecha
+    document.addEventListener('DOMContentLoaded', function() {
+        const datePicker = document.getElementById('panel-date-picker');
+        if (datePicker) {
+            datePicker.addEventListener('change', function() {
+                const fecha = this.value;
+                const selectTecnico = document.getElementById('id_tecnico');
+                const tecnicoId = selectTecnico ? selectTecnico.value : '';
+                
+                // Realizar petición AJAX para refrescar la agenda si hay técnico seleccionado o cargar para el primer especialista
+                // Podríamos recargar con parámetro GET de fecha o llamar a la API
+                const url = new URL(window.location.href);
+                url.searchParams.set('fecha', fecha);
+                // Si la vista no maneja filtrado por fecha en GET para todo el panel, podemos actualizar dinámicamente vía AJAX
+                // Para una experiencia fluida, recargamos la página o llamamos a la API
+                window.location.href = url.toString();
+            });
+        }
+    });
+</script>

@@ -42,6 +42,76 @@
     </a>
     {% endif %}
 
+    <!-- ═══ CAMPANA DE NOTIFICACIONES ═══════════════════════════════════ -->
+    <div class="relative ml-3" id="notification-component">
+        <button type="button" id="notif-toggle-btn"
+                class="relative flex items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:text-amber-400 hover:bg-zinc-800/60 transition-all duration-200 cursor-pointer"
+                aria-label="Notificaciones">
+            <!-- Bell icon (filled when has unread) -->
+            <svg id="notif-bell-empty" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <svg id="notif-bell-filled" class="w-5 h-5 hidden text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5.85 3.5a.75.75 0 00-1.117-1 9.719 9.719 0 00-2.348 4.876.75.75 0 001.479.248A8.219 8.219 0 015.85 3.5zM19.267 2.5a.75.75 0 10-1.118 1 8.22 8.22 0 011.987 4.124.75.75 0 001.48-.248A9.72 9.72 0 0019.266 2.5z"/>
+                <path fill-rule="evenodd" d="M12 2.25A6.75 6.75 0 005.25 9v.75a8.217 8.217 0 01-2.119 5.52.75.75 0 00.298 1.206c1.544.57 3.16.99 4.831 1.243a3.75 3.75 0 107.48 0 24.583 24.583 0 004.83-1.244.75.75 0 00.298-1.205 8.217 8.217 0 01-2.118-5.52V9A6.75 6.75 0 0012 2.25zM9.75 18c0-.034 0-.067.002-.1a25.05 25.05 0 004.496 0l.002.1a2.25 2.25 0 11-4.5 0z" clip-rule="evenodd"/>
+            </svg>
+            <!-- Badge -->
+            <span id="notif-badge"
+                  class="hidden absolute -top-0.5 -right-0.5 items-center justify-center min-w-[18px] h-[18px] px-1 text-[0.6rem] font-bold text-zinc-950 bg-amber-400 rounded-full ring-2 ring-zinc-950 tabular-nums"
+                  style="font-family: 'DM Mono', monospace;">
+                0
+            </span>
+        </button>
+
+        <!-- ═══ DROPDOWN CARD ═══════════════════════════════════════════ -->
+        <div id="notif-dropdown"
+             class="hidden absolute right-0 mt-3 w-[22rem] sm:w-[26rem] z-50 overflow-hidden
+                    transform opacity-0 scale-95 transition-all duration-200 ease-out origin-top-right"
+             style="will-change: transform, opacity;">
+
+            <!-- Outer shell: completely safe dark background -->
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden" style="box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);">
+
+                <!-- ── Header ────────────────────────────────────────── -->
+                <div class="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800"
+                     style="background-color: #111111;">
+                    <div class="flex items-center gap-2.5">
+                        <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                        </svg>
+                        <h4 class="text-xs font-bold tracking-[0.2em] uppercase text-zinc-100"
+                            style="font-family: 'DM Mono', monospace;">Notificaciones</h4>
+                        <span id="notif-header-count"
+                              class="hidden items-center justify-center min-w-[18px] h-[18px] px-1 text-[0.6rem] font-bold text-zinc-950 bg-amber-500 rounded-full tabular-nums"
+                              style="font-family: 'DM Mono', monospace;">0</span>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0" style="font-family: 'DM Mono', monospace;">
+                        <button type="button" id="notif-mark-read"
+                                class="text-[0.65rem] text-zinc-500 hover:text-amber-500 transition-colors cursor-pointer whitespace-nowrap">✓ todo leído</button>
+                        <span class="text-zinc-700">·</span>
+                        <a href="{% url 'ticket_list' %}" class="text-[0.65rem] text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap">ver todo →</a>
+                    </div>
+                </div>
+
+                <!-- ── Body ──────────────────────────────────────────── -->
+                <div id="notif-list" class="max-h-[26rem] overflow-y-auto notif-scrollbar" style="background-color: #0c0c0c;">
+                    <div class="flex items-center justify-center py-10">
+                        <div class="animate-spin rounded-full h-5 w-5 border-2 border-amber-500/30 border-t-amber-500"></div>
+                    </div>
+                </div>
+
+                <!-- ── Footer ────────────────────────────────────────── -->
+                <div class="px-5 py-3.5 border-t border-zinc-800 text-center transition-colors" style="background-color: #111111;">
+                    <a href="{% url 'ticket_list' %}"
+                       class="text-[0.65rem] font-medium tracking-[0.2em] uppercase text-zinc-500 hover:text-amber-500 transition-colors block w-full"
+                       style="font-family: 'DM Mono', monospace;">
+                        Ver historial completo →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <span class="text-zinc-700 text-xs">/</span>
     <a href="{% url 'user_profile' %}"
        class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'user_profile' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
@@ -61,3 +131,228 @@
 
 </nav>
 {% endwith %}
+
+<!-- ═══ ESTILOS DEL DROPDOWN ═════════════════════════════════════════════ -->
+<style>
+    .notif-scrollbar::-webkit-scrollbar { width: 5px; }
+    .notif-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .notif-scrollbar::-webkit-scrollbar-thumb { background-color: #3f3f46; border-radius: 4px; }
+    .notif-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #52525b; }
+    .notif-scrollbar { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
+
+    .notif-item {
+        position: relative;
+        display: block;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #222222;
+        transition: background-color 0.15s;
+        text-decoration: none;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background-color: #1a1a1a; }
+
+    /* Left accent bar on hover */
+    .notif-item::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 2px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .notif-item:hover::before { opacity: 1; }
+    .notif-item[data-tipo="WARNING"]::before { background-color: #f59e0b; }
+    .notif-item[data-tipo="ERROR"]::before { background-color: #ef4444; }
+    .notif-item[data-tipo="SUCCESS"]::before { background-color: #10b981; }
+    .notif-item[data-tipo="INFO"]::before { background-color: #eab308; }
+
+    /* Description clamping to 2 lines */
+    .notif-desc {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+
+<!-- Axios CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<!-- ═══ SCRIPT DE NOTIFICACIONES ═════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn  = document.getElementById('notif-toggle-btn');
+    const dropdown   = document.getElementById('notif-dropdown');
+    const badge      = document.getElementById('notif-badge');
+    const headerCnt  = document.getElementById('notif-header-count');
+    const notifList  = document.getElementById('notif-list');
+    const markRead   = document.getElementById('notif-mark-read');
+    const bellEmpty  = document.getElementById('notif-bell-empty');
+    const bellFilled = document.getElementById('notif-bell-filled');
+
+    let isOpen = false;
+
+    // ── Load initial count silently ──
+    fetchNotifications(false);
+
+    // ── Auto-refresh every 30s ──
+    setInterval(() => { if (!isOpen) fetchNotifications(false); }, 30000);
+
+    // ── Toggle ──
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isOpen ? closeDropdown() : openDropdown();
+    });
+
+    // ── Click outside ──
+    document.addEventListener('click', (e) => {
+        if (isOpen && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) closeDropdown();
+    });
+
+    // ── Escape key ──
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isOpen) closeDropdown();
+    });
+
+    // ── Mark all read ──
+    markRead.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        markRead.textContent = '...';
+        axios.post('/tickets/api/notificaciones/marcar-leidas/', {}, {
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(() => { updateBadge(0); renderEmpty(); markRead.textContent = '✓ todo leído'; })
+        .catch(() => { markRead.textContent = '✓ todo leído'; });
+    });
+
+    // ── Helpers ──
+    function openDropdown() {
+        isOpen = true;
+        dropdown.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            dropdown.classList.remove('opacity-0', 'scale-95');
+            dropdown.classList.add('opacity-100', 'scale-100');
+        });
+        fetchNotifications(true);
+    }
+
+    function closeDropdown() {
+        isOpen = false;
+        dropdown.classList.remove('opacity-100', 'scale-100');
+        dropdown.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => dropdown.classList.add('hidden'), 200);
+    }
+
+    function fetchNotifications(renderList) {
+        if (renderList) {
+            notifList.innerHTML = `
+                <div class="flex items-center justify-center py-10">
+                    <div class="animate-spin rounded-full h-5 w-5 border-2 border-amber-500/30 border-t-amber-500"></div>
+                </div>`;
+        }
+
+        axios.get('/tickets/api/notificaciones/')
+            .then(res => {
+                updateBadge(res.data.count);
+                if (renderList) {
+                    res.data.results.length === 0 ? renderEmpty() : renderItems(res.data.results);
+                }
+            })
+            .catch(() => {
+                if (renderList) notifList.innerHTML = '<div class="p-6 text-xs text-red-500 text-center font-mono">Error al cargar</div>';
+            });
+    }
+
+    function updateBadge(count) {
+        if (count > 0) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+            badge.classList.add('inline-flex');
+            headerCnt.textContent = count;
+            headerCnt.classList.remove('hidden');
+            headerCnt.classList.add('inline-flex');
+            bellEmpty.classList.add('hidden');
+            bellFilled.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('inline-flex');
+            headerCnt.classList.add('hidden');
+            headerCnt.classList.remove('inline-flex');
+            bellFilled.classList.add('hidden');
+            bellEmpty.classList.remove('hidden');
+        }
+    }
+
+    function renderEmpty() {
+        notifList.innerHTML = `
+            <div class="py-12 text-center flex flex-col items-center gap-2">
+                <svg class="w-9 h-9 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p class="text-[0.7rem] text-zinc-500" style="font-family: 'DM Mono', monospace;">No tienes alertas nuevas</p>
+            </div>`;
+    }
+
+    function renderItems(items) {
+        notifList.innerHTML = items.map(item => {
+            // Using safe HEX colors instead of Tailwind classes that might get purged
+            const styles = {
+                'WARNING': { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+                'ERROR':   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+                'SUCCESS': { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+                'INFO':    { color: '#eab308', bg: 'rgba(234, 179, 8, 0.1)' },
+            };
+            const s = styles[item.tipo_alerta] || styles['INFO'];
+
+            // Icon SVG by type
+            const iconSvgs = {
+                'WARNING': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>',
+                'ERROR':   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                'SUCCESS': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                'INFO':    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>',
+            };
+            const iconPath = iconSvgs[item.tipo_alerta] || iconSvgs['INFO'];
+
+            const ticketCode = item.codigo_ticket
+                ? `<span style="color: #ffffff; font-weight: 700;">Ticket TKT-${item.codigo_ticket.split('-')[1] || item.codigo_ticket}</span> <span style="color: #555555; font-weight: 700;">—</span> `
+                : '';
+
+            const descHtml = item.descripcion
+                ? `<p class="notif-desc" style="margin-top: 6px; font-size: 0.75rem; color: #71717a; line-height: 1.4;">${item.descripcion}</p>`
+                : '';
+
+            const actionUrl = item.url_ticket || '#';
+            const ticketLink = item.url_ticket
+                ? `<span style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #f59e0b; font-family: 'DM Mono', monospace;">Ver ticket &rarr;</span>`
+                : '';
+
+            return `
+            <a href="${actionUrl}" class="notif-item">
+                <div style="display: flex; align-items: flex-start; gap: 12px; width: 100%;">
+                    <!-- Icon circle -->
+                    <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background-color: #1a1a1a; display: flex; align-items: center; justify-content: center; margin-top: 2px;">
+                        <svg style="width: 18px; height: 18px; color: ${s.color};" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconPath}</svg>
+                    </div>
+
+                    <!-- Content -->
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                            <div style="min-width: 0; flex: 1;">
+                                <p style="font-size: 0.8rem; font-weight: 500; color: #d4d4d8; line-height: 1.25; font-family: 'Space Grotesk', sans-serif; margin: 0;">
+                                    ${ticketCode}${item.mensaje}
+                                </p>
+                            </div>
+                            <span style="flex-shrink: 0; margin-top: 6px; width: 6px; height: 6px; border-radius: 50%; background-color: ${s.color};" title="${item.tipo_alerta}"></span>
+                        </div>
+                        ${descHtml}
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px;">
+                            <span style="font-size: 0.65rem; color: #52525b; font-variant-numeric: tabular-nums; font-family: 'DM Mono', monospace;">${item.tiempo_relativo}</span>
+                            ${ticketLink}
+                        </div>
+                    </div>
+                </div>
+            </a>`;
+        }).join('');
+    }
+});
+</script>

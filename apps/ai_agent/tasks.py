@@ -24,9 +24,18 @@ def index_knowledge_document(self, documento_id: int) -> dict:
 
 
 def _run_ticket_analysis(ticket_id: int) -> dict:
-    """Lógica de análisis IA de un ticket — usable como tarea o fallback síncrono."""
+    """Lógica de análisis IA de un ticket — usable como tarea o fallback síncrono.
+
+    La IA analiza el ticket, sugiere categoría/prioridad/técnico pero
+    **nunca asigna directamente**. Siempre transiciona a PENDIENTE_VALIDACION
+    para que el administrador valide la pre-asignación.
+    """
     from apps.accounts.models import CustomUser
     from apps.tickets.models import Ticket, TicketStatus
+    from apps.tickets.services.assignment import (
+        get_technicians_with_workload,
+        suggest_best_technician,
+    )
     from apps.tickets.services.transitions import InvalidTransitionError, transition_ticket
 
     from apps.ai_agent.services.gemini import analyze_ticket_description
@@ -39,17 +48,18 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     if ticket.estado != TicketStatus.CREADO_PENDIENTE_IA:
         return {'skipped': 'estado ya avanzado, sin acción'}
 
-    tecnicos = list(
-        CustomUser.objects.filter(role=CustomUser.Roles.TECNICO, is_active=True)
-        .values('id', 'first_name', 'last_name', 'especialidad')
-    )
+    # Obtener técnicos con su carga de trabajo para informar a la IA
+    tecnicos_workload = get_technicians_with_workload()
     tecnicos_data = [
         {
             'id': t['id'],
-            'nombre': f"{t['first_name']} {t['last_name']}".strip(),
+            'nombre': t['nombre'],
             'especialidad': t.get('especialidad', ''),
+            'carga_actual': t['carga_actual'],
+            'max_carga': t['max_carga'],
+            'disponible': t['carga_disponible'] > 0,
         }
-        for t in tecnicos
+        for t in tecnicos_workload
     ]
 
     resultado = analyze_ticket_description(
@@ -83,15 +93,26 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     ticket.prioridad = ticket.ia_prioridad_sugerida
     update_fields.extend(['categoria', 'prioridad'])
 
+    # Pre-asignar técnico sugerido (sin confirmar — requiere validación admin)
     tecnico_id = resultado.get('tecnico_sugerido_id') or 0
-    tecnico_asignado = None
+    tecnico_sugerido = None
     if tecnico_id:
         try:
-            tecnico_asignado = CustomUser.objects.get(pk=tecnico_id, role=CustomUser.Roles.TECNICO, is_active=True)
-            ticket.ia_tecnico_sugerido = tecnico_asignado
+            tecnico_sugerido = CustomUser.objects.get(
+                pk=tecnico_id, role=CustomUser.Roles.TECNICO, is_active=True,
+            )
+            ticket.ia_tecnico_sugerido = tecnico_sugerido
             update_fields.append('ia_tecnico_sugerido')
         except CustomUser.DoesNotExist:
             pass
+
+    # Si la IA no sugirió técnico válido, usar el servicio de asignación
+    if tecnico_sugerido is None:
+        mejor = suggest_best_technician(ticket.categoria, ticket.prioridad)
+        if mejor is not None:
+            ticket.ia_tecnico_sugerido = mejor
+            tecnico_sugerido = mejor
+            update_fields.append('ia_tecnico_sugerido')
 
     ticket.save(update_fields=update_fields)
 
@@ -101,38 +122,31 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     except InvalidTransitionError:
         pass
 
-    # Auto-asignación: si confianza >= 0.8 y hay técnico sugerido válido
-    confianza = resultado.get('confianza', 0) or 0
-    if confianza >= 0.8 and tecnico_asignado is not None:
-        ticket.tecnico = tecnico_asignado
-        ticket.save(update_fields=['tecnico'])
-        try:
-            transition_ticket(
-                ticket,
-                nuevo_estado=TicketStatus.ASIGNADO,
-                actor_role='SYSTEM',
-                nota=f'Auto-asignado por IA a {tecnico_asignado.get_full_name()} (confianza: {confianza:.2f}).',
+    # Siempre pasar a PENDIENTE_VALIDACION — el admin debe aprobar
+    try:
+        nota_validacion = 'Pre-asignación IA pendiente de validación por el administrador.'
+        if tecnico_sugerido:
+            nota_validacion = (
+                f'Pre-asignación IA: {tecnico_sugerido.get_full_name()} '
+                f'(confianza: {resultado.get("confianza", 0):.2f}). '
+                f'Pendiente de validación por el administrador.'
             )
-        except InvalidTransitionError:
-            pass
-    else:
-        # Confianza baja o sin técnico → pasa a validación del admin
-        try:
-            transition_ticket(
-                ticket,
-                nuevo_estado=TicketStatus.PENDIENTE_VALIDACION,
-                actor_role='SYSTEM',
-                nota='Pendiente de validación manual por el administrador.',
-            )
-        except InvalidTransitionError:
-            pass
+        transition_ticket(
+            ticket,
+            nuevo_estado=TicketStatus.PENDIENTE_VALIDACION,
+            actor_role='SYSTEM',
+            nota=nota_validacion,
+        )
+    except InvalidTransitionError:
+        pass
 
     return {
         'ticket_id': ticket_id,
         'categoria': ticket.ia_categoria_sugerida,
         'prioridad': ticket.ia_prioridad_sugerida,
         'confianza': str(ticket.ia_confianza),
-        'auto_asignado': confianza >= 0.8 and tecnico_asignado is not None,
+        'tecnico_sugerido': tecnico_sugerido.get_full_name() if tecnico_sugerido else None,
+        'auto_asignado': False,  # Nunca auto-asigna, siempre pre-asignación
     }
 
 

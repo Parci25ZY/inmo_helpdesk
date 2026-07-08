@@ -60,3 +60,48 @@ def notify_nuevo_ticket(self, ticket_id: int) -> bool:
         logger.warning("n8n error (%s) — notificación omitida para %s.", exc, ticket.codigo)
         raise self.retry(exc=exc)
     return False
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=10)
+def notify_ticket_aprobado(self, ticket_id: int) -> bool:
+    """Envía notificación a n8n cuando el admin aprueba un ticket.
+
+    Informa al inquilino: 'Tu reporte fue aprobado. Selecciona tu horario aquí'.
+    """
+    webhook_url = getattr(settings, 'N8N_WEBHOOK_URL', '').strip()
+    if not webhook_url:
+        return False
+
+    from apps.tickets.models import Ticket
+    try:
+        ticket = Ticket.objects.select_related('inquilino', 'tecnico', 'unidad__edificio').get(pk=ticket_id)
+    except Ticket.DoesNotExist:
+        logger.warning("Ticket %d no encontrado para notificación n8n.", ticket_id)
+        return False
+
+    payload = {
+        'event': 'TICKET_APROBADO',
+        'ticket_id': ticket.pk,
+        'codigo': ticket.codigo,
+        'titulo': ticket.titulo,
+        'mensaje': 'Tu reporte fue aprobado. Selecciona tu horario de visita.',
+        'inquilino_nombre': ticket.inquilino.get_full_name(),
+        'inquilino_email': ticket.inquilino.email,
+        'tecnico_nombre': ticket.tecnico.get_full_name() if ticket.tecnico else 'Soporte Técnico',
+        'url_agendar': f"{settings.SITE_URL}/tickets/{ticket.pk}/",
+    }
+
+    try:
+        response = requests.post(webhook_url, json=payload, timeout=4)
+        response.raise_for_status()
+        logger.info("Notificación de aprobación enviada para ticket %s.", ticket.codigo)
+        return True
+    except requests.exceptions.ConnectionError:
+        logger.warning("n8n no disponible — notificación omitida para %s.", ticket.codigo)
+    except requests.exceptions.Timeout:
+        logger.warning("n8n timeout — notificación omitida para %s.", ticket.codigo)
+    except Exception as exc:
+        logger.warning("n8n error (%s) — notificación omitida para %s.", exc, ticket.codigo)
+        raise self.retry(exc=exc)
+    return False
+

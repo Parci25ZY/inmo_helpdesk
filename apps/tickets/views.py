@@ -14,13 +14,17 @@ Todas las transiciones de estado pasan por
 
 from __future__ import annotations
 
+import json
+from datetime import date, timedelta
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import (
     CreateView,
     DetailView,
@@ -32,6 +36,7 @@ from django.views.generic import (
 from apps.accounts.models import CustomUser
 
 from .forms import (
+    InquilinoScheduleForm,
     MensajeForm,
     TicketAdminValidateForm,
     TicketCreateForm,
@@ -42,8 +47,17 @@ from .models import EvidenciaTicket, MensajeTicket, Ticket, TicketPriority, Tick
 from .services.transitions import (
     InvalidTransitionError,
     TransitionPermissionError,
+    WorkloadExceededError,
     allowed_transitions_for,
     transition_ticket,
+)
+from .services.assignment import can_assign_to, get_priority_weight
+from .services.availability import (
+    BLOCK_LIBRE,
+    auto_suggest_schedule,
+    find_consecutive_free_blocks,
+    get_technician_availability_multi_day,
+    get_visit_duration,
 )
 
 
@@ -51,6 +65,7 @@ from .services.transitions import (
 _TRANSITION_LABELS: dict[str, str] = {
     TicketStatus.ANALIZADO_POR_IA: 'Marcar como analizado',
     TicketStatus.PENDIENTE_VALIDACION: 'Enviar a validación',
+    TicketStatus.APROBADO: 'Aprobar ticket',
     TicketStatus.ASIGNADO: 'Confirmar asignación',
     TicketStatus.EN_CAMINO: 'Salir hacia el sitio',
     TicketStatus.EN_PROGRESO: 'Iniciar intervención',
@@ -213,6 +228,103 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         user = self.request.user
         actor_role = 'ADMIN' if user.is_admin else ('TECNICO' if user.is_tecnico else 'INQUILINO')
         transiciones = list(allowed_transitions_for(ticket, role=actor_role))
+
+        # Contexto de pre-asignación para el admin
+        tiene_preasignacion = (
+            ticket.is_pendiente_validacion
+            and ticket.ia_tecnico_sugerido is not None
+        )
+        tecnico_sugerido_sobrecargado = False
+        if tiene_preasignacion:
+            tecnico_sugerido_sobrecargado = not ticket.ia_tecnico_sugerido.puede_aceptar_ticket(
+                ticket.prioridad
+            )
+        sin_tecnicos_disponibles = False
+        if user.is_admin and ticket.is_pendiente_validacion:
+            from .services.assignment import get_available_technicians
+            sin_tecnicos_disponibles = not get_available_technicians(ticket.prioridad).exists()
+
+        duracion_visita = get_visit_duration(ticket.prioridad)
+
+        # ── Auto-agenda del inquilino (estado APROBADO) ────────────────
+        puede_agendar = (
+            ticket.is_aprobado
+            and user.is_inquilino
+            and ticket.inquilino_id == user.id
+        )
+        dias_disponibles = []
+        dias_ocupados = []
+        schedule_form = None
+        primer_dia_disponible = None
+        dias_postergados = 0
+        sugerencia_auto = None
+
+        if puede_agendar and ticket.tecnico:
+            disponibilidad_raw = get_technician_availability_multi_day(
+                ticket.tecnico, dias=14,
+            )
+            schedule_form = InquilinoScheduleForm(instance=ticket)
+
+            hoy = timezone.localdate()
+            for info in disponibilidad_raw:
+                # Buscar grupos de N bloques consecutivos libres
+                grupos = find_consecutive_free_blocks(
+                    info.get('bloques', []),
+                    duracion_visita,
+                )
+                # Cada grupo → un slot válido (primer bloque inicio, último bloque fin)
+                slots_validos = []
+                for grupo in grupos:
+                    slots_validos.append({
+                        'hora_inicio': grupo[0]['hora_inicio'],
+                        'hora_fin': grupo[-1]['hora_fin'],
+                        'bloques': grupo,  # los bloques individuales
+                    })
+
+                info['slots_validos'] = slots_validos
+
+                if slots_validos:
+                    dias_disponibles.append(info)
+                    if primer_dia_disponible is None:
+                        primer_dia_disponible = info['fecha']
+                else:
+                    # Razón por la que no está disponible
+                    if not info['tiene_horario']:
+                        info['razon'] = 'No laborable'
+                    else:
+                        bloques_libres = [
+                            b for b in info.get('bloques', [])
+                            if b.get('estado') == BLOCK_LIBRE
+                        ]
+                        if not bloques_libres:
+                            info['razon'] = 'Agenda completa'
+                        else:
+                            info['razon'] = 'Sin bloques consecutivos suficientes'
+                    dias_ocupados.append(info)
+
+            if primer_dia_disponible and primer_dia_disponible != hoy:
+                dias_postergados = (primer_dia_disponible - hoy).days
+
+            sugerencia_auto = auto_suggest_schedule(ticket.tecnico, ticket.prioridad)
+
+        # ── Chat ───────────────────────────────────────────────────────
+        puede_mensajear = (
+            ticket.tecnico_id is not None
+            and not ticket.is_terminal
+            and (
+                (user.is_tecnico and ticket.tecnico_id == user.id)
+                or (user.is_inquilino and ticket.inquilino_id == user.id)
+            )
+        )
+        # Chat de coordinación en estado APROBADO
+        chat_coordinacion = (
+            ticket.is_aprobado
+            and (
+                (user.is_inquilino and ticket.inquilino_id == user.id)
+                or user.is_admin
+            )
+        )
+
         ctx.update({
             'transiciones_disponibles': transiciones,
             'transiciones_con_label': [
@@ -227,14 +339,22 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             'resolution_form': TicketResolutionForm(instance=ticket),
             'mensajes': ticket.mensajes.all(),
             'mensaje_form': MensajeForm(),
-            'puede_mensajear': (
-                ticket.tecnico_id is not None
-                and not ticket.is_terminal
-                and (
-                    (user.is_tecnico and ticket.tecnico_id == user.id)
-                    or (user.is_inquilino and ticket.inquilino_id == user.id)
-                )
-            ),
+            'puede_mensajear': puede_mensajear or chat_coordinacion,
+            'chat_coordinacion': chat_coordinacion,
+            # Pre-asignación admin
+            'tiene_preasignacion': tiene_preasignacion,
+            'tecnico_sugerido_sobrecargado': tecnico_sugerido_sobrecargado,
+            'sin_tecnicos_disponibles': sin_tecnicos_disponibles,
+            'peso_ticket': get_priority_weight(ticket.prioridad),
+            'duracion_visita': duracion_visita,
+            # Auto-agenda inquilino
+            'puede_agendar': puede_agendar,
+            'dias_disponibles': dias_disponibles,
+            'dias_ocupados': dias_ocupados,
+            'schedule_form': schedule_form,
+            'primer_dia_disponible': primer_dia_disponible,
+            'dias_postergados': dias_postergados,
+            'sugerencia_auto': sugerencia_auto,
         })
         return ctx
 
@@ -289,6 +409,13 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
         except Exception:
             pass
 
+        # Notificación in-app para admin(s)
+        try:
+            from .services.notify import notify_ticket_created
+            notify_ticket_created(self.object)
+        except Exception:
+            pass
+
         # Evidencias subidas en el mismo formulario
         for f in self.request.FILES.getlist('evidencias'):
             EvidenciaTicket.objects.create(
@@ -321,10 +448,14 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
         return ctx
 
 
-# ── Validación (Admin) ──────────────────────────────────────────────────
+# ── Validación (Admin) → Aprobación ─────────────────────────────────────
 
 class TicketValidateView(RoleRequiredMixin, UpdateView):
-    """Admin valida sugerencia IA y asigna técnico (estado → ASIGNADO)."""
+    """Admin aprueba el ticket y asigna técnico (estado → APROBADO).
+
+    El admin ya NO agenda la visita. Al aprobar, se notifica al inquilino
+    para que él seleccione el horario desde la disponibilidad real del técnico.
+    """
 
     allowed_roles = ('ADMIN',)
     model = Ticket
@@ -332,7 +463,6 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
     template_name = 'tickets/detail.html'
 
     def get(self, request, *args, **kwargs):
-        # El form vive embebido en detail.html, así que redirigimos.
         return redirect('ticket_detail', pk=kwargs['pk'])
 
     def get_success_url(self) -> str:
@@ -347,19 +477,110 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             form.add_error('tecnico', 'Debes asignar un técnico.')
             return self.form_invalid(form)
         ticket.save()
+
         try:
             transition_ticket(
                 ticket,
-                nuevo_estado=TicketStatus.ASIGNADO,
+                nuevo_estado=TicketStatus.APROBADO,
                 actor=self.request.user,
                 actor_role='ADMIN',
-                nota=f'Asignado a {ticket.tecnico.get_full_name()}.',
+                nota=(
+                    f'Aprobado por {self.request.user.get_full_name()}. '
+                    f'Técnico asignado: {ticket.tecnico.get_full_name()}. '
+                    f'Esperando que el inquilino seleccione su horario.'
+                ),
             )
         except (InvalidTransitionError, TransitionPermissionError) as exc:
             messages.error(self.request, str(exc))
             return redirect('ticket_detail', pk=ticket.pk)
-        messages.success(self.request, f'Ticket {ticket.codigo} validado y asignado.')
+
+        # Notificar al inquilino que su ticket fue aprobado
+        try:
+            from .notifications import notify_ticket_aprobado
+            notify_ticket_aprobado.apply_async(args=[ticket.pk], countdown=2)
+        except Exception:
+            pass  # Sin Celery: el inquilino verá el estado al entrar
+
+        messages.success(
+            self.request,
+            f'Ticket {ticket.codigo} aprobado. El inquilino recibirá una notificación para agendar.',
+        )
         return redirect(self.get_success_url())
+
+
+# ── Auto-agenda del Inquilino (APROBADO → ASIGNADO) ─────────────────────
+
+class InquilinoScheduleView(LoginRequiredMixin, View):
+    """El inquilino selecciona su horario de visita.
+
+    Recibe fecha + hora desde el schedule picker y transiciona
+    el ticket de APROBADO a ASIGNADO.
+    """
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        ticket = get_object_or_404(Ticket, pk=pk)
+
+        # Validar que el inquilino sea el dueño del ticket
+        if ticket.inquilino_id != request.user.id:
+            raise PermissionDenied('Solo el inquilino del ticket puede agendar.')
+
+        if ticket.estado != TicketStatus.APROBADO:
+            messages.error(request, 'Este ticket ya no está disponible para agendar.')
+            return redirect('ticket_detail', pk=pk)
+
+        form = InquilinoScheduleForm(request.POST, instance=ticket)
+        if not form.is_valid():
+            messages.error(request, 'Por favor selecciona una fecha y hora válidas.')
+            return redirect('ticket_detail', pk=pk)
+
+        ticket = form.save(commit=False)
+
+        # Calcular hora_fin automáticamente si no fue proporcionada
+        if ticket.hora_programada_inicio and not ticket.hora_programada_fin:
+            from datetime import datetime, timedelta
+            duracion = get_visit_duration(ticket.prioridad)
+            inicio_dt = datetime.combine(ticket.fecha_programada, ticket.hora_programada_inicio)
+            ticket.hora_programada_fin = (inicio_dt + timedelta(hours=duracion)).time()
+
+        ticket.save()
+
+        try:
+            transition_ticket(
+                ticket,
+                nuevo_estado=TicketStatus.ASIGNADO,
+                actor=request.user,
+                actor_role='INQUILINO',
+                nota=(
+                    f'Visita agendada por el inquilino: '
+                    f'{ticket.fecha_programada.strftime("%d/%m/%Y")} '
+                    f'de {ticket.hora_programada_inicio.strftime("%H:%M")} '
+                    f'a {ticket.hora_programada_fin.strftime("%H:%M")}.'
+                ),
+            )
+        except WorkloadExceededError as exc:
+            messages.error(request, str(exc))
+            return redirect('ticket_detail', pk=pk)
+        except (InvalidTransitionError, TransitionPermissionError) as exc:
+            messages.error(request, str(exc))
+            return redirect('ticket_detail', pk=pk)
+
+        # Mensaje automático de confirmación en el chat
+        MensajeTicket.objects.create(
+            ticket=ticket,
+            autor=request.user,
+            mensaje=(
+                f'He agendado la visita para el '
+                f'{ticket.fecha_programada.strftime("%d/%m/%Y")} '
+                f'de {ticket.hora_programada_inicio.strftime("%H:%M")} '
+                f'a {ticket.hora_programada_fin.strftime("%H:%M")}.'
+            ),
+        )
+
+        messages.success(
+            request,
+            f'Visita agendada correctamente para el {ticket.fecha_programada.strftime("%d/%m/%Y")}.',
+        )
+        return redirect('ticket_detail', pk=pk)
 
 
 # ── Transiciones genéricas (Técnico/Admin) ─────────────────────────────
@@ -402,7 +623,7 @@ class TicketTransitionView(LoginRequiredMixin, View):
 class TicketResolveView(RoleRequiredMixin, View):
     """Técnico cierra el ticket: añade notas + evidencia + transición a RESUELTO."""
 
-    allowed_roles = ('TECNICO', 'ADMIN')
+    allowed_roles = ('TECNICO',)
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         ticket = get_object_or_404(Ticket, pk=pk)
@@ -467,6 +688,13 @@ class MensajeCreateView(LoginRequiredMixin, View):
             msg.ticket = ticket
             msg.autor = user
             msg.save()
+
+            # Notificación in-app para la contraparte
+            try:
+                from .services.notify import notify_new_message
+                notify_new_message(ticket, autor=user)
+            except Exception:
+                pass
 
         if request.headers.get('HX-Request'):
             return render(request, 'tickets/partials/_mensajes.html', {
@@ -537,3 +765,73 @@ class DashboardView(LoginRequiredMixin, ListView):
 
         ctx.update(scope.aggregate(**agg_kwargs))
         return ctx
+
+
+# ── API AJAX: Disponibilidad de técnicos ─────────────────────────────────
+
+class TechnicianAvailabilityView(LoginRequiredMixin, View):
+    """API AJAX que retorna la disponibilidad de un técnico en JSON.
+
+    GET /tickets/api/disponibilidad/<tecnico_id>/?fecha=YYYY-MM-DD&prioridad=MEDIA
+    """
+
+    def get(self, request: HttpRequest, tecnico_id: int) -> JsonResponse:
+        if not request.user.is_admin:
+            return JsonResponse({'error': 'No autorizado'}, status=403)
+
+        tecnico = get_object_or_404(CustomUser, pk=tecnico_id, role='TECNICO')
+        fecha_str = request.GET.get('fecha', '')
+        prioridad = request.GET.get('prioridad', 'MEDIA')
+
+        try:
+            fecha = date.fromisoformat(fecha_str) if fecha_str else timezone.localdate()
+        except ValueError:
+            fecha = timezone.localdate()
+
+        # Multi-day availability
+        disponibilidad = get_technician_availability_multi_day(tecnico, desde=fecha, dias=5)
+
+        # Auto-suggest
+        sugerencia = auto_suggest_schedule(tecnico, prioridad, desde=fecha)
+
+        # Serialize
+        data = {
+            'tecnico': {
+                'id': tecnico.id,
+                'nombre': tecnico.get_full_name(),
+                'especialidades': tecnico.especialidades_display,
+                'carga_actual': tecnico.carga_trabajo_actual,
+                'max_carga': tecnico.max_carga_trabajo,
+                'disponible_ahora': tecnico.esta_disponible_ahora(),
+            },
+            'dias': [
+                {
+                    'fecha': d['fecha'].isoformat(),
+                    'dia_label': d['dia_label'],
+                    'dia_label_short': d['dia_label_short'],
+                    'tiene_horario': d['tiene_horario'],
+                    'bloques': [
+                        {
+                            'hora_inicio': b['hora_inicio'].strftime('%H:%M'),
+                            'hora_fin': b['hora_fin'].strftime('%H:%M'),
+                            'ocupado': b.get('ocupado', b.get('estado') != 'libre'),
+                            'estado': b.get('estado', 'libre'),
+                            'ticket_id': b['ticket_id'],
+                            'ticket_titulo': b['ticket_titulo'],
+                        }
+                        for b in d['bloques']
+                    ],
+                }
+                for d in disponibilidad
+            ],
+            'sugerencia': {
+                'fecha': sugerencia['fecha'].isoformat(),
+                'hora_inicio': sugerencia['hora_inicio'].strftime('%H:%M'),
+                'hora_fin': sugerencia['hora_fin'].strftime('%H:%M'),
+                'duracion_horas': sugerencia['duracion_horas'],
+            } if sugerencia else None,
+            'duracion_visita': get_visit_duration(prioridad),
+            'buffer_minutes': 30,
+        }
+        return JsonResponse(data)
+

@@ -22,6 +22,7 @@
     </header>
 
     <main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 lg:px-8">
+        {% include 'partials/_role_banner.html' %}
 
         <div class="border-b-2 border-zinc-900 pb-6 mb-8">
             <p class="text-[0.65rem] font-mono uppercase tracking-[0.22em] text-amber-600 mb-1">{% if object %}Editando unidad{% else %}Nueva unidad{% endif %}</p>

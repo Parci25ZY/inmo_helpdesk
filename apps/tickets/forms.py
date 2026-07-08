@@ -64,20 +64,41 @@ class TicketCreateForm(forms.ModelForm):
 
 
 class TicketAdminValidateForm(forms.ModelForm):
-    """Formulario que usa el administrador para validar la sugerencia IA.
+    """Formulario que usa el administrador para aprobar el ticket.
 
     El administrador puede:
       * Ajustar categoría / prioridad si discrepa con la IA.
       * Asignar el técnico definitivo (puede aceptar el sugerido).
+      * Ver la carga de trabajo y disponibilidad de cada técnico.
+
+    Ya NO programa fecha/hora. Eso lo hace el inquilino en el paso siguiente.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['tecnico'].queryset = CustomUser.objects.filter(
+        tecnicos = CustomUser.objects.filter(
             role=CustomUser.Roles.TECNICO,
             is_active=True,
-        ).order_by('first_name')
-        self.fields['tecnico'].empty_label = '— Seleccionar técnico —'
+        ).prefetch_related('especialidades_tecnico', 'horarios').order_by('first_name')
+
+        # Construir choices con info de carga de trabajo y disponibilidad
+        choices = [('', '— Seleccionar técnico —')]
+        for t in tecnicos:
+            carga = t.carga_trabajo_actual
+            limite = t.max_carga_trabajo
+            disponible = t.carga_disponible
+            en_horario = t.esta_disponible_ahora()
+            indicador_carga = '🟢' if disponible > 3 else ('🟡' if disponible > 0 else '🔴')
+            indicador_horario = '⏰' if en_horario else '💤'
+            especialidades = t.especialidades_display or 'Sin especialidad'
+            label = (
+                f'{indicador_carga}{indicador_horario} {t.get_full_name()} '
+                f'({especialidades}) — '
+                f'Carga: {carga}/{limite}'
+            )
+            choices.append((t.pk, label))
+
+        self.fields['tecnico'].choices = choices
 
     class Meta:
         model = Ticket
@@ -87,6 +108,45 @@ class TicketAdminValidateForm(forms.ModelForm):
             'prioridad': forms.Select(attrs={'class': SELECT_CLASS}),
             'tecnico': forms.Select(attrs={'class': SELECT_CLASS}),
         }
+
+
+class InquilinoScheduleForm(forms.ModelForm):
+    """Formulario que usa el inquilino para agendar la visita técnica.
+
+    Los campos se rellenan automáticamente al hacer clic en un bloque
+    libre del selector de disponibilidad (JS autocompleta los hidden inputs).
+    """
+
+    class Meta:
+        model = Ticket
+        fields = ['fecha_programada', 'hora_programada_inicio', 'hora_programada_fin']
+        widgets = {
+            'fecha_programada': forms.DateInput(attrs={
+                'class': SELECT_CLASS,
+                'type': 'date',
+            }),
+            'hora_programada_inicio': forms.TimeInput(attrs={
+                'class': SELECT_CLASS,
+                'type': 'time',
+            }),
+            'hora_programada_fin': forms.TimeInput(attrs={
+                'class': SELECT_CLASS,
+                'type': 'time',
+            }),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        fecha = cleaned.get('fecha_programada')
+        inicio = cleaned.get('hora_programada_inicio')
+        fin = cleaned.get('hora_programada_fin')
+        if not fecha:
+            self.add_error('fecha_programada', 'Debes seleccionar una fecha.')
+        if not inicio:
+            self.add_error('hora_programada_inicio', 'Debes seleccionar una hora de inicio.')
+        if inicio and fin and inicio >= fin:
+            self.add_error('hora_programada_fin', 'La hora de fin debe ser posterior a la de inicio.')
+        return cleaned
 
 
 class TicketTransitionForm(forms.Form):

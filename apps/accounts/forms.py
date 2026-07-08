@@ -20,7 +20,30 @@ class CustomAuthenticationForm(AuthenticationForm):
 class UserEditForm(UserChangeForm):
     """Formulario para editar usuarios existentes en el panel administrativo"""
     password = None  # Ocultar el campo de contraseña en la edición directa
-    
+
+    especialidades = forms.MultipleChoiceField(
+        choices=CustomUser.Especialidad.choices,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'form-checkbox h-4 w-4 text-amber-500',
+        }),
+        required=False,
+        label='Especialidades',
+    )
+
+    horario_dias = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-populate especialidades from M2M
+        if self.instance and self.instance.pk and self.instance.is_tecnico:
+            self.fields['especialidades'].initial = list(
+                self.instance.especialidades_tecnico
+                .values_list('especialidad', flat=True)
+            )
+
     class Meta:
         model = CustomUser
         fields = ['first_name', 'last_name', 'email', 'phone', 'role', 'especialidad', 'is_active', 'is_staff']
@@ -55,9 +78,54 @@ class UserEditForm(UserChangeForm):
             }),
         }
 
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit and user.is_tecnico:
+            self._save_especialidades(user)
+            self._save_horarios(user)
+        return user
+
+    def _save_especialidades(self, user):
+        from apps.accounts.models import TecnicoEspecialidad
+
+        especialidades = self.cleaned_data.get('especialidades', [])
+        TecnicoEspecialidad.objects.filter(tecnico=user).delete()
+        for i, esp in enumerate(especialidades):
+            TecnicoEspecialidad.objects.create(
+                tecnico=user,
+                especialidad=esp,
+                es_principal=(i == 0),
+            )
+        if especialidades:
+            user.especialidad = especialidades[0]
+            user.save(update_fields=['especialidad'])
+
+    def _save_horarios(self, user):
+        import json
+        from apps.accounts.models import HorarioTrabajo
+
+        horario_json = self.cleaned_data.get('horario_dias', '')
+        if not horario_json:
+            return
+
+        try:
+            horarios = json.loads(horario_json)
+        except (json.JSONDecodeError, TypeError):
+            return
+
+        HorarioTrabajo.objects.filter(tecnico=user).delete()
+        for h in horarios:
+            if h.get('hora_inicio') and h.get('hora_fin'):
+                HorarioTrabajo.objects.create(
+                    tecnico=user,
+                    dia_semana=h['dia'],
+                    hora_inicio=h['hora_inicio'],
+                    hora_fin=h['hora_fin'],
+                )
+
 _INPUT_CLASS = (
     'w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 '
-    'text-base font-medium text-zinc-900 placeholder-zinc-300 outline-none '
+    'text-base font-medium text-zinc-900 placeholder-zinc-400 outline-none '
     'focus:border-zinc-900 transition-colors duration-200'
 )
 _SELECT_CLASS = (
@@ -68,6 +136,23 @@ _SELECT_CLASS = (
 
 class UserCreateForm(UserCreationForm):
     """Formulario para crear nuevos usuarios en el panel administrativo"""
+
+    especialidades = forms.MultipleChoiceField(
+        choices=CustomUser.Especialidad.choices,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'form-checkbox h-4 w-4 text-amber-500',
+        }),
+        required=False,
+        label='Especialidades',
+        help_text='Selecciona las especialidades del técnico.',
+    )
+
+    # Horarios de trabajo — campos dinámicos procesados en la vista
+    horario_dias = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+        help_text='JSON con los horarios semanales.',
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -107,6 +192,55 @@ class UserCreateForm(UserCreationForm):
                 'class': _SELECT_CLASS,
             }),
         }
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit and user.is_tecnico:
+            self._save_especialidades(user)
+            self._save_horarios(user)
+        return user
+
+    def _save_especialidades(self, user):
+        import json
+        from apps.accounts.models import TecnicoEspecialidad
+
+        especialidades = self.cleaned_data.get('especialidades', [])
+        # Clear existing M2M
+        TecnicoEspecialidad.objects.filter(tecnico=user).delete()
+        for i, esp in enumerate(especialidades):
+            TecnicoEspecialidad.objects.create(
+                tecnico=user,
+                especialidad=esp,
+                es_principal=(i == 0),
+            )
+        # Update legacy field with first specialty
+        if especialidades:
+            user.especialidad = especialidades[0]
+            user.save(update_fields=['especialidad'])
+
+    def _save_horarios(self, user):
+        import json
+        from apps.accounts.models import HorarioTrabajo
+
+        horario_json = self.cleaned_data.get('horario_dias', '')
+        if not horario_json:
+            return
+
+        try:
+            horarios = json.loads(horario_json)
+        except (json.JSONDecodeError, TypeError):
+            return
+
+        # Clear existing schedules
+        HorarioTrabajo.objects.filter(tecnico=user).delete()
+        for h in horarios:
+            if h.get('hora_inicio') and h.get('hora_fin'):
+                HorarioTrabajo.objects.create(
+                    tecnico=user,
+                    dia_semana=h['dia'],
+                    hora_inicio=h['hora_inicio'],
+                    hora_fin=h['hora_fin'],
+                )
 
 
 _PROFILE_INPUT_CLASS = (

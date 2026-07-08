@@ -26,6 +26,7 @@
     </header>
 
     <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:px-8">
+        {% include 'partials/_role_banner.html' %}
 
         {% if messages %}
         <div class="space-y-2 mb-6">
@@ -125,29 +126,66 @@
                 </section>
                 {% endif %}
 
-                <!-- Comunicación Técnico ↔ Inquilino -->
-                {% if ticket.tecnico and not request.user.is_admin %}
-                <section class="bg-white border border-zinc-200 p-6">
-                    <div class="flex items-center justify-between border-b border-zinc-100 pb-3 mb-5">
+                <!-- Comunicación Técnico ↔ Inquilino / Coordinación previa -->
+                {% if puede_mensajear %}
+                <section class="bg-white border {% if chat_coordinacion %}border-violet-300 bg-violet-50/20{% else %}border-zinc-200{% endif %} p-6">
+                    <div class="flex items-center justify-between border-b {% if chat_coordinacion %}border-violet-200{% else %}border-zinc-100{% endif %} pb-3 mb-5">
                         <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                            <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400">Comunicación</p>
+                            <div class="w-2 h-2 rounded-full {% if chat_coordinacion %}bg-violet-500{% else %}bg-amber-400{% endif %} animate-pulse"></div>
+                            <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase {% if chat_coordinacion %}text-violet-700{% else %}text-zinc-400{% endif %}">
+                                {% if chat_coordinacion %}Chat Previo · Coordinación de Horario{% else %}Comunicación{% endif %}
+                            </p>
                         </div>
                         <span class="text-[0.65rem] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded-full">
-                            {% if request.user.is_tecnico %}{{ ticket.inquilino.get_full_name }}{% else %}{{ ticket.tecnico.get_full_name }}{% endif %}
+                            {% if request.user.is_tecnico %}{{ ticket.inquilino.get_full_name }}{% elif request.user.is_inquilino %}{{ ticket.tecnico.get_full_name|default:"Soporte Técnico / Admin" }}{% else %}Coordinación Admin ↔ Residente{% endif %}
                         </span>
                     </div>
+                    {% if chat_coordinacion %}
+                    <p class="text-xs text-violet-800 mb-4 bg-violet-100/60 p-3 border-l-2 border-violet-500 font-medium">
+                        💬 Tu ticket fue aprobado. Si necesitas coordinar un cambio de horario o no encuentras un turno conveniente, usa este chat para comunicarte con el administrador o el técnico asignado.
+                    </p>
+                    {% endif %}
                     <div id="mensajes-hilo" class="space-y-5 max-h-80 overflow-y-auto pr-2">
                         {% include 'tickets/partials/_mensajes.html' %}
                     </div>
                 </section>
                 {% endif %}
 
-                <!-- Validación admin -->
+                <!-- Auto-agenda del inquilino (Estado APROBADO) -->
+                {% if puede_agendar %}
+                {% include 'tickets/partials/_schedule_picker.html' %}
+                {% endif %}
+
+                <!-- Validación admin / Pre-asignación -->
                 {% if puede_validar %}
                 <section class="bg-amber-50 border-2 border-amber-300 p-6">
-                    <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-700 mb-2">Acción requerida · Validación</p>
-                    <h3 class="text-lg font-bold text-amber-900 mb-4">Confirma o ajusta la sugerencia y asigna técnico</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-700">Acción requerida · Validación</p>
+                        {% if tiene_preasignacion %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[0.65rem] font-bold tracking-widest uppercase bg-violet-100 text-violet-700 border border-violet-300">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 11.293a1 1 0 001.414 1.414l2-2A1 1 0 0011.5 10.5V7z"/></svg>
+                            Pre-asignación IA
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-lg font-bold text-amber-900 mb-2">Aprueba la incidencia y asigna técnico (El residente elegirá su horario después)</h3>
+                    <p class="text-xs text-amber-700 mb-4">
+                        Peso de este ticket: <strong>{{ peso_ticket }} punto{{ peso_ticket|pluralize:"s" }}</strong> (prioridad {{ ticket.get_prioridad_display }})
+                    </p>
+
+                    {% if sin_tecnicos_disponibles %}
+                    <div class="flex items-center gap-3 px-4 py-3 mb-4 border-2 border-red-300 bg-red-50 text-sm font-medium text-red-800">
+                        <svg class="w-5 h-5 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                        <span><strong>Sin técnicos disponibles.</strong> Todos los técnicos han alcanzado su límite de carga de trabajo para esta prioridad. El ticket permanecerá en espera hasta que haya capacidad disponible.</span>
+                    </div>
+                    {% elif tecnico_sugerido_sobrecargado %}
+                    <div class="flex items-center gap-3 px-4 py-3 mb-4 border border-orange-300 bg-orange-50 text-sm font-medium text-orange-800">
+                        <svg class="w-5 h-5 shrink-0 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        <span>El técnico sugerido por la IA (<strong>{{ ticket.ia_tecnico_sugerido.get_full_name }}</strong>) ha alcanzado su límite de carga. Selecciona otro técnico disponible.</span>
+                    </div>
+                    {% endif %}
+
+
                     <form method="POST" action="{% url 'ticket_validate' ticket.pk %}" class="space-y-4">
                         {% csrf_token %}
                         <div class="grid sm:grid-cols-3 gap-4">
@@ -164,7 +202,7 @@
                                 {{ validate_form.tecnico }}
                             </div>
                         </div>
-                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all">Validar y Asignar →</button>
+                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all{% if sin_tecnicos_disponibles %} opacity-50{% endif %}">Aprobar Ticket y Notificar Residente →</button>
                     </form>
                 </section>
                 {% endif %}

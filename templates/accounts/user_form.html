@@ -20,7 +20,7 @@
                     <span class="font-normal text-zinc-600 mx-1.5">/</span>
                     {{ title }}
                 </h1>
-                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-600 uppercase mt-0.5">
                     MÓDULO ADMINISTRATIVO &nbsp;·&nbsp; {{ request.user.email }}
                 </p>
             </div>
@@ -29,6 +29,7 @@
     </header>
 
     <main class="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:px-8">
+        {% include 'partials/_role_banner.html' %}
 
         <!-- ── Encabezado del formulario ──────────────────────────────── -->
         <div class="border-b-2 border-zinc-900 pb-6 mb-8">
@@ -64,13 +65,13 @@
         </div>
         {% endif %}
 
-        <form method="POST" action="" novalidate class="space-y-10">
+        <form id="user-form" method="POST" action="" novalidate class="space-y-10">
             {% csrf_token %}
 
             <!-- ── Sección: Datos personales ───────────────────────── -->
             <fieldset class="border-none p-0 m-0">
                 <legend
-                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-600 border-b border-zinc-200 pb-2 w-full mb-6">
                     Datos Personales
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -78,7 +79,7 @@
                     <!-- Nombres -->
                     <div class="group relative">
                         <label for="{{ form.first_name.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Nombres
                         </label>
                         {{ form.first_name }}
@@ -93,7 +94,7 @@
                     <!-- Apellidos -->
                     <div class="group relative">
                         <label for="{{ form.last_name.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Apellidos
                         </label>
                         {{ form.last_name }}
@@ -108,7 +109,7 @@
                     <!-- Correo -->
                     <div class="group relative">
                         <label for="{{ form.email.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Correo Electrónico
                         </label>
                         {{ form.email }}
@@ -124,7 +125,7 @@
                     {% if form.phone %}
                     <div class="group relative">
                         <label for="{{ form.phone.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Teléfono
                         </label>
                         {{ form.phone }}
@@ -143,7 +144,7 @@
             <!-- ── Sección: Rol y permisos ──────────────────────────── -->
             <fieldset class="border-none p-0 m-0">
                 <legend
-                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-600 border-b border-zinc-200 pb-2 w-full mb-6">
                     Rol y Permisos
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -151,7 +152,7 @@
                     <!-- Rol -->
                     <div>
                         <label for="{{ form.role.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2">
                             Rol del Usuario
                         </label>
                         {{ form.role }}
@@ -160,29 +161,49 @@
                         {% endfor %}
                     </div>
 
-                    <!-- Especialidad (Oculto por defecto, solo para técnicos) -->
-                    <div id="especialidad-container" class="hidden">
-                        <label for="{{ form.especialidad.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2">
-                            Especialidad
+                    <!-- Especialidades Múltiples (Oculto por defecto, solo para técnicos) -->
+                    <div id="especialidad-container" class="hidden sm:col-span-2 bg-zinc-50 border border-zinc-200 p-5 mt-2">
+                        <label class="block text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-700 mb-3">
+                            Especialidades del Técnico (Múltiples permitidas)
                         </label>
-                        {{ form.especialidad }}
-                        <p class="mt-2 text-xs text-zinc-400 leading-relaxed">{{ form.especialidad.help_text }}</p>
-                        {% for error in form.especialidad.errors %}
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {% for checkbox in form.especialidades %}
+                            <label class="flex items-center gap-2 text-xs font-mono bg-white p-2.5 border border-zinc-200 hover:border-amber-400 cursor-pointer transition-colors">
+                                {{ checkbox.tag }}
+                                <span class="text-zinc-800">{{ checkbox.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="hidden">{{ form.especialidad }}</div>
+                        {% for error in form.especialidades.errors %}
                         <p class="mt-1 text-xs text-red-600 font-medium">{{ error }}</p>
                         {% endfor %}
+
+                        <!-- Horario de Trabajo Semanal -->
+                        <div class="mt-6 pt-5 border-t border-zinc-200">
+                            <label class="block text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-700 mb-1">
+                                Horario de Trabajo Semanal
+                            </label>
+                            <p class="text-xs text-zinc-500 mb-4">Define los días y franjas horarias en que el técnico está disponible para visitas y pre-asignaciones de IA.</p>
+                            
+                            {{ form.horario_dias }}
+                            
+                            <div class="space-y-2" id="schedule-grid">
+                                <!-- Se llena vía JS -->
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Estado activo / staff (solo en edición) -->
                     {% if user_obj %}
-                    <div class="flex flex-col gap-4 justify-center pt-5">
+                    <div class="flex flex-col gap-4 justify-center pt-5 sm:col-span-2">
                         {% if form.is_active %}
                         <label class="flex items-center gap-3 cursor-pointer group">
                             {{ form.is_active }}
                             <span class="text-sm font-medium text-zinc-700 group-hover:text-zinc-900 transition-colors">
                                 Cuenta activa
                             </span>
-                            <span class="text-xs text-zinc-400">(el usuario puede iniciar sesión)</span>
+                            <span class="text-xs text-zinc-600">(el usuario puede iniciar sesión)</span>
                         </label>
                         {% endif %}
                         {% if form.is_staff %}
@@ -203,7 +224,7 @@
             {% if not user_obj %}
             <fieldset class="border-none p-0 m-0">
                 <legend
-                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2 w-full mb-6">
+                    class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-600 border-b border-zinc-200 pb-2 w-full mb-6">
                     Contraseña de Acceso
                 </legend>
                 <div class="grid gap-8 sm:grid-cols-2">
@@ -211,7 +232,7 @@
                     <!-- Contraseña 1 -->
                     <div class="group relative">
                         <label for="{{ form.password1.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Contraseña
                         </label>
                         {{ form.password1 }}
@@ -230,7 +251,7 @@
                                     margin-top: 0.25rem !important;
                                 }
                                 .password-help-box li {
-                                    color: #a1a1aa !important; /* Zinc-400 (gris medio/claro) - puedes cambiar este valor hex si quieres otro */
+                                    color: #52525b !important; /* Zinc-600 para mejor contraste */
                                     margin-bottom: 0.25rem !important;
                                 }
                             </style>
@@ -242,7 +263,7 @@
                     <!-- Contraseña 2 -->
                     <div class="group relative">
                         <label for="{{ form.password2.id_for_label }}"
-                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-400 mb-2 transition-colors duration-200 group-focus-within:text-zinc-800">
+                            class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-zinc-600 mb-2 transition-colors duration-200 group-focus-within:text-zinc-900">
                             Confirmar Contraseña
                         </label>
                         {{ form.password2 }}
@@ -286,22 +307,99 @@
     document.addEventListener('DOMContentLoaded', function () {
         const roleSelect = document.getElementById('{{ form.role.id_for_label }}');
         const especialidadContainer = document.getElementById('especialidad-container');
-        const especialidadSelect = document.getElementById('{{ form.especialidad.id_for_label }}');
+        const scheduleGrid = document.getElementById('schedule-grid');
+        const horarioInput = document.getElementById('{{ form.horario_dias.id_for_label }}');
+        const form = document.getElementById('user-form');
 
         function toggleEspecialidad() {
             if (roleSelect && roleSelect.value === 'TECNICO') {
                 especialidadContainer.classList.remove('hidden');
             } else {
                 especialidadContainer.classList.add('hidden');
-                if (especialidadSelect) {
-                    especialidadSelect.value = '';
-                }
             }
         }
 
         if (roleSelect) {
             roleSelect.addEventListener('change', toggleEspecialidad);
             toggleEspecialidad(); // Call on load
+        }
+
+        // Datos iniciales de horario
+        const diasLabels = [
+            { id: 0, nombre: 'Lunes' },
+            { id: 1, nombre: 'Martes' },
+            { id: 2, nombre: 'Miércoles' },
+            { id: 3, nombre: 'Jueves' },
+            { id: 4, nombre: 'Viernes' },
+            { id: 5, nombre: 'Sábado' },
+            { id: 6, nombre: 'Domingo' }
+        ];
+
+        // Construir datos existentes de user_obj o default L-V 8:00-17:00
+        const existentes = {};
+        {% if user_obj and user_obj.horarios.all %}
+            {% for h in user_obj.horarios.all %}
+                existentes[{{ h.dia_semana }}] = {
+                    activo: true,
+                    inicio: '{{ h.hora_inicio|time:"H:i" }}',
+                    fin: '{{ h.hora_fin|time:"H:i" }}'
+                };
+            {% endfor %}
+        {% else %}
+            // Default: Lunes a Viernes 08:00 a 17:00
+            for (let i = 0; i < 5; i++) {
+                existentes[i] = { activo: true, inicio: '08:00', fin: '17:00' };
+            }
+        {% endif %}
+
+        if (scheduleGrid) {
+            scheduleGrid.innerHTML = '';
+            diasLabels.forEach(dia => {
+                const conf = existentes[dia.id] || { activo: false, inicio: '08:00', fin: '17:00' };
+                const row = document.createElement('div');
+                row.className = 'flex flex-col sm:flex-row sm:items-center justify-between bg-white hover:bg-zinc-50 transition-colors p-3.5 border border-zinc-200 rounded-lg shadow-sm text-sm font-medium';
+                row.innerHTML = `
+                    <label class="flex items-center gap-3 cursor-pointer font-semibold text-zinc-900 w-32 mb-2 sm:mb-0">
+                        <input type="checkbox" class="dia-check form-checkbox h-5 w-5 text-amber-500 border-zinc-300 rounded focus:ring-amber-500 transition-colors" data-dia="${dia.id}" ${conf.activo ? 'checked' : ''}>
+                        <span>${dia.nombre}</span>
+                    </label>
+                    <div class="flex items-center gap-3 ${conf.activo ? '' : 'opacity-40 pointer-events-none grayscale'}" id="horas-dia-${dia.id}">
+                        <span class="text-zinc-500 text-xs uppercase tracking-wider font-bold">De</span>
+                        <input type="time" class="hora-inicio bg-white border border-zinc-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded px-2.5 py-1.5 text-sm text-zinc-900 outline-none transition-all shadow-sm" value="${conf.inicio}">
+                        <span class="text-zinc-500 text-xs uppercase tracking-wider font-bold">a</span>
+                        <input type="time" class="hora-fin bg-white border border-zinc-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded px-2.5 py-1.5 text-sm text-zinc-900 outline-none transition-all shadow-sm" value="${conf.fin}">
+                    </div>
+                `;
+                scheduleGrid.appendChild(row);
+
+                const chk = row.querySelector('.dia-check');
+                const horasDiv = row.querySelector(`#horas-dia-${dia.id}`);
+                chk.addEventListener('change', function() {
+                    if (this.checked) {
+                        horasDiv.classList.remove('opacity-40', 'pointer-events-none');
+                    } else {
+                        horasDiv.classList.add('opacity-40', 'pointer-events-none');
+                    }
+                });
+            });
+        }
+
+        if (form && horarioInput) {
+            form.addEventListener('submit', function() {
+                if (roleSelect && roleSelect.value === 'TECNICO') {
+                    const data = [];
+                    document.querySelectorAll('.dia-check:checked').forEach(chk => {
+                        const dia = parseInt(chk.getAttribute('data-dia'), 10);
+                        const row = chk.closest('div');
+                        const inicio = row.querySelector('.hora-inicio').value;
+                        const fin = row.querySelector('.hora-fin').value;
+                        if (inicio && fin) {
+                            data.push({ dia: dia, hora_inicio: inicio, hora_fin: fin });
+                        }
+                    });
+                    horarioInput.value = JSON.stringify(data);
+                }
+            });
         }
     });
 </script>
