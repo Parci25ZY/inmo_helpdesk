@@ -46,7 +46,7 @@ class UserEditForm(UserChangeForm):
 
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'phone', 'role', 'especialidad', 'is_active', 'is_staff']
+        fields = ['first_name', 'last_name', 'email', 'cedula', 'phone', 'role', 'especialidad', 'is_active', 'is_staff']
         widgets = {
             'first_name': forms.TextInput(attrs={
                 'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
@@ -59,6 +59,12 @@ class UserEditForm(UserChangeForm):
             'email': forms.EmailInput(attrs={
                 'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
                 'placeholder': 'Correo Electrónico'
+            }),
+            'cedula': forms.TextInput(attrs={
+                'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
+                'placeholder': 'Cédula (10 dígitos)',
+                'maxlength': '10',
+                'inputmode': 'numeric',
             }),
             'phone': forms.TextInput(attrs={
                 'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
@@ -167,7 +173,7 @@ class UserCreateForm(UserCreationForm):
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'first_name', 'last_name', 'phone', 'role', 'especialidad']
+        fields = ['email', 'first_name', 'last_name', 'cedula', 'phone', 'role', 'especialidad']
         widgets = {
             'email': forms.EmailInput(attrs={
                 'class': _INPUT_CLASS,
@@ -181,9 +187,15 @@ class UserCreateForm(UserCreationForm):
                 'class': _INPUT_CLASS,
                 'placeholder': 'Ej. Ramírez',
             }),
+            'cedula': forms.TextInput(attrs={
+                'class': _INPUT_CLASS,
+                'placeholder': 'Ej. 1712345678',
+                'maxlength': '10',
+                'inputmode': 'numeric',
+            }),
             'phone': forms.TextInput(attrs={
                 'class': _INPUT_CLASS,
-                'placeholder': 'Ej. +593 99 000 0000',
+                'placeholder': 'Ej. 0991234567',
             }),
             'role': forms.Select(attrs={
                 'class': _SELECT_CLASS,

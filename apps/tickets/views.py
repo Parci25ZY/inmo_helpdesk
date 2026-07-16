@@ -334,8 +334,16 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             'evidencias_resolucion': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.RESOLUCION),
             'transition_form': TicketTransitionForm(),
             'puede_validar': user.is_admin and ticket.is_pendiente_validacion,
+            # El admin puede reasignar el técnico mientras el ticket está APROBADO
+            # pero el inquilino aún no ha agendado (fecha_programada es None).
+            'puede_reasignar': (
+                user.is_admin
+                and ticket.is_aprobado
+                and ticket.fecha_programada is None
+            ),
             'puede_resolver': user.is_tecnico and ticket.estado == TicketStatus.EN_PROGRESO and ticket.tecnico_id == user.id,
             'validate_form': TicketAdminValidateForm(instance=ticket),
+            'reassign_form': TicketAdminValidateForm(instance=ticket),
             'resolution_form': TicketResolutionForm(instance=ticket),
             'mensajes': ticket.mensajes.all(),
             'mensaje_form': MensajeForm(),
@@ -413,6 +421,13 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
         try:
             from .services.notify import notify_ticket_created
             notify_ticket_created(self.object)
+        except Exception:
+            pass
+
+        # Correo SMTP al admin
+        try:
+            from .services.email_service import send_ticket_created_email
+            send_ticket_created_email(self.object.pk)
         except Exception:
             pass
 
@@ -501,6 +516,17 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
         except Exception:
             pass  # Sin Celery: el inquilino verá el estado al entrar
 
+        # Correos SMTP: al residente (agendar cita) y al técnico (detalles)
+        try:
+            from .services.email_service import (
+                send_ticket_approved_resident_email,
+                send_ticket_approved_tech_email,
+            )
+            send_ticket_approved_resident_email(ticket.pk)
+            send_ticket_approved_tech_email(ticket.pk)
+        except Exception:
+            pass
+
         messages.success(
             self.request,
             f'Ticket {ticket.codigo} aprobado. El inquilino recibirá una notificación para agendar.',
@@ -533,16 +559,22 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, 'Por favor selecciona una fecha y hora válidas.')
             return redirect('ticket_detail', pk=pk)
 
-        ticket = form.save(commit=False)
+        # Calcular los campos de horario en memoria, SIN guardar todavía.
+        # El save() se realiza SOLO si la transición tiene éxito, evitando
+        # el estado inconsistente: ticket APROBADO con fecha ya persistida.
+        ticket_datos = form.save(commit=False)
+
+        # Guard: asegurarse de que los campos de horario llegaron con valor
+        if not ticket_datos.fecha_programada or not ticket_datos.hora_programada_inicio:
+            messages.error(request, 'Debes seleccionar una fecha y hora de inicio válidas.')
+            return redirect('ticket_detail', pk=pk)
 
         # Calcular hora_fin automáticamente si no fue proporcionada
-        if ticket.hora_programada_inicio and not ticket.hora_programada_fin:
+        if not ticket_datos.hora_programada_fin:
             from datetime import datetime, timedelta
-            duracion = get_visit_duration(ticket.prioridad)
-            inicio_dt = datetime.combine(ticket.fecha_programada, ticket.hora_programada_inicio)
-            ticket.hora_programada_fin = (inicio_dt + timedelta(hours=duracion)).time()
-
-        ticket.save()
+            duracion = get_visit_duration(ticket_datos.prioridad)
+            inicio_dt = datetime.combine(ticket_datos.fecha_programada, ticket_datos.hora_programada_inicio)
+            ticket_datos.hora_programada_fin = (inicio_dt + timedelta(hours=duracion)).time()
 
         try:
             transition_ticket(
@@ -552,9 +584,9 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
                 actor_role='INQUILINO',
                 nota=(
                     f'Visita agendada por el inquilino: '
-                    f'{ticket.fecha_programada.strftime("%d/%m/%Y")} '
-                    f'de {ticket.hora_programada_inicio.strftime("%H:%M")} '
-                    f'a {ticket.hora_programada_fin.strftime("%H:%M")}.'
+                    f'{ticket_datos.fecha_programada.strftime("%d/%m/%Y")} '
+                    f'de {ticket_datos.hora_programada_inicio.strftime("%H:%M")} '
+                    f'a {ticket_datos.hora_programada_fin.strftime("%H:%M")}.'
                 ),
             )
         except WorkloadExceededError as exc:
@@ -564,21 +596,41 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, str(exc))
             return redirect('ticket_detail', pk=pk)
 
+        # La transición fue exitosa: persistir campos de horario.
+        # Refrescamos desde BD para tener el estado actualizado por transition_ticket,
+        # luego escribimos solo los tres campos de horario.
+        ticket.refresh_from_db()
+        ticket.fecha_programada = ticket_datos.fecha_programada
+        ticket.hora_programada_inicio = ticket_datos.hora_programada_inicio
+        ticket.hora_programada_fin = ticket_datos.hora_programada_fin
+        ticket.save(update_fields=['fecha_programada', 'hora_programada_inicio', 'hora_programada_fin'])
+
         # Mensaje automático de confirmación en el chat
+        fecha_str = ticket.fecha_programada.strftime('%d/%m/%Y') if ticket.fecha_programada else ticket_datos.fecha_programada.strftime('%d/%m/%Y')
+        inicio_str = ticket.hora_programada_inicio.strftime('%H:%M') if ticket.hora_programada_inicio else ticket_datos.hora_programada_inicio.strftime('%H:%M')
+        fin_str = ticket.hora_programada_fin.strftime('%H:%M') if ticket.hora_programada_fin else ticket_datos.hora_programada_fin.strftime('%H:%M')
+
         MensajeTicket.objects.create(
             ticket=ticket,
             autor=request.user,
             mensaje=(
                 f'He agendado la visita para el '
-                f'{ticket.fecha_programada.strftime("%d/%m/%Y")} '
-                f'de {ticket.hora_programada_inicio.strftime("%H:%M")} '
-                f'a {ticket.hora_programada_fin.strftime("%H:%M")}.'
+                f'{fecha_str} '
+                f'de {inicio_str} '
+                f'a {fin_str}.'
             ),
         )
 
+        # Correo SMTP al técnico con la agenda
+        try:
+            from .services.email_service import send_ticket_scheduled_email
+            send_ticket_scheduled_email(ticket.pk)
+        except Exception:
+            pass
+
         messages.success(
             request,
-            f'Visita agendada correctamente para el {ticket.fecha_programada.strftime("%d/%m/%Y")}.',
+            f'Visita agendada correctamente para el {fecha_str}.',
         )
         return redirect('ticket_detail', pk=pk)
 
@@ -655,6 +707,18 @@ class TicketResolveView(RoleRequiredMixin, View):
         except (InvalidTransitionError, TransitionPermissionError) as exc:
             messages.error(request, str(exc))
             return redirect('ticket_detail', pk=pk)
+
+        # Correos SMTP al residente (resolución) y al admin (cierre del ciclo)
+        try:
+            from .services.email_service import (
+                send_ticket_resolved_email,
+                send_ticket_resolved_admin_email,
+            )
+            send_ticket_resolved_email(ticket.pk)
+            send_ticket_resolved_admin_email(ticket.pk)
+        except Exception:
+            pass
+
         messages.success(request, f'Ticket {ticket.codigo} marcado como resuelto.')
         return redirect('ticket_detail', pk=pk)
 
@@ -835,3 +899,75 @@ class TechnicianAvailabilityView(LoginRequiredMixin, View):
         }
         return JsonResponse(data)
 
+
+# ── Reasignación de técnico post-aprobación (Admin) ─────────────────────
+
+class TicketReassignView(RoleRequiredMixin, View):
+    """Permite al admin cambiar el técnico asignado mientras el ticket está
+    en estado APROBADO y el inquilino aún no ha agendado la visita.
+
+    Esta vista NO cambia el estado del ticket. Solo actualiza ``ticket.tecnico``
+    y registra la acción en el historial como nota. Es silenciosa (sin correos)
+    para no confundir al residente con múltiples notificaciones.
+
+    Si el nuevo técnico también está sobrecargado el form lo habrá impedido;
+    aun así se valida aquí como segunda barrera.
+    """
+
+    allowed_roles = ('ADMIN',)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        from apps.tickets.models import HistorialEstado
+
+        ticket = get_object_or_404(Ticket, pk=pk)
+
+        if not ticket.is_aprobado:
+            messages.error(request, 'Solo se puede reasignar el técnico mientras el ticket está en estado APROBADO.')
+            return redirect('ticket_detail', pk=pk)
+
+        if ticket.fecha_programada is not None:
+            messages.error(request, 'El inquilino ya agendó la visita. No se puede reasignar el técnico.')
+            return redirect('ticket_detail', pk=pk)
+
+        form = TicketAdminValidateForm(request.POST, instance=ticket)
+        if not form.is_valid():
+            messages.error(request, 'Datos inválidos al reasignar técnico.')
+            return redirect('ticket_detail', pk=pk)
+
+        nuevo_tecnico = form.cleaned_data.get('tecnico')
+        if not nuevo_tecnico:
+            messages.error(request, 'Debes seleccionar un técnico válido.')
+            return redirect('ticket_detail', pk=pk)
+
+        # Segunda barrera: verificar capacidad aunque el form lo haya deshabilitado
+        if not nuevo_tecnico.puede_aceptar_ticket(ticket.prioridad):
+            messages.error(
+                request,
+                f'{nuevo_tecnico.get_full_name()} ha alcanzado su límite de carga '
+                f'({nuevo_tecnico.carga_trabajo_actual}/{nuevo_tecnico.max_carga_trabajo} puntos). '
+                'Selecciona otro técnico o ajusta su límite.'
+            )
+            return redirect('ticket_detail', pk=pk)
+
+        tecnico_anterior = ticket.tecnico
+        ticket.tecnico = nuevo_tecnico
+        ticket.save(update_fields=['tecnico', 'actualizado_en'])
+
+        HistorialEstado.objects.create(
+            ticket=ticket,
+            estado_anterior=ticket.estado,
+            estado_nuevo=ticket.estado,   # el estado no cambia
+            actor=request.user,
+            nota=(
+                f'Técnico reasignado por {request.user.get_full_name()}. '
+                f'Anterior: {tecnico_anterior.get_full_name() if tecnico_anterior else "(ninguno)"}. '
+                f'Nuevo: {nuevo_tecnico.get_full_name()}.'
+            ),
+        )
+
+        messages.success(
+            request,
+            f'Técnico reasignado a {nuevo_tecnico.get_full_name()} correctamente. '
+            'El residente puede continuar agendando su visita.'
+        )
+        return redirect('ticket_detail', pk=pk)

@@ -51,6 +51,12 @@
     --color-cyan-50: oklch(98.4% 0.019 200.873);
     --color-cyan-400: oklch(78.9% 0.154 211.53);
     --color-cyan-700: oklch(52% 0.105 223.128);
+    --color-sky-50: oklch(97.7% 0.013 236.62);
+    --color-sky-100: oklch(95.1% 0.026 236.824);
+    --color-sky-300: oklch(82.8% 0.111 230.318);
+    --color-sky-600: oklch(58.8% 0.158 241.966);
+    --color-sky-700: oklch(50% 0.134 242.749);
+    --color-sky-900: oklch(39.1% 0.09 240.876);
     --color-blue-50: oklch(97% 0.014 254.604);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-blue-700: oklch(48.8% 0.243 264.376);
@@ -734,6 +740,24 @@
       top: calc(var(--value-ones) * -1em);
       inset-inline-start: 0;
     }
+  }
+  @layer daisyui.l1.l2.l3 {
+    .validator:user-valid, .validator:user-valid:focus, .validator:user-valid:checked, .validator:user-valid[aria-checked="true"], .validator:user-valid:focus-within, .validator:has(:user-valid), .validator:has(:user-valid):focus, .validator:has(:user-valid):checked, .validator:has(:user-valid)[aria-checked="true"], .validator:has(:user-valid):focus-within {
+      --input-color: var(--color-success);
+    }
+    .validator:user-invalid, .validator:user-invalid:focus, .validator:user-invalid:checked, .validator:user-invalid[aria-checked="true"], .validator:user-invalid:focus-within, .validator:has(:user-invalid), .validator:has(:user-invalid):focus, .validator:has(:user-invalid):checked, .validator:has(:user-invalid)[aria-checked="true"], .validator:has(:user-invalid):focus-within, .validator[aria-invalid]:not([aria-invalid="false"]), .validator[aria-invalid]:not([aria-invalid="false"]):focus, .validator[aria-invalid]:not([aria-invalid="false"]):checked, .validator[aria-invalid]:not([aria-invalid="false"])[aria-checked="true"], .validator[aria-invalid]:not([aria-invalid="false"]):focus-within, .validator:has([aria-invalid]:not([aria-invalid="false"])), .validator:has([aria-invalid]:not([aria-invalid="false"])):focus, .validator:has([aria-invalid]:not([aria-invalid="false"])):checked, .validator:has([aria-invalid]:not([aria-invalid="false"]))[aria-checked="true"], .validator:has([aria-invalid]:not([aria-invalid="false"])):focus-within {
+      --input-color: var(--color-error);
+    }
+    .validator:user-invalid ~ .validator-hint, .validator:has(:user-invalid) ~ .validator-hint, .validator[aria-invalid]:not([aria-invalid="false"]) ~ .validator-hint, .validator:has([aria-invalid]:not([aria-invalid="false"])) ~ .validator-hint {
+      visibility: visible;
+      color: var(--color-error);
+    }
+  }
+  .validator:user-invalid ~ .validator-hint, .validator:has(:user-invalid) ~ .validator-hint, .validator[aria-invalid]:not([aria-invalid="false"]) ~ .validator-hint, .validator:has([aria-invalid]:not([aria-invalid="false"])) ~ .validator-hint {
+    display: revert-layer;
+  }
+  .visible {
+    visibility: visible;
   }
   @layer daisyui.l1.l2.l3 {
     .input {
@@ -1555,6 +1579,9 @@
   .mb-10 {
     margin-bottom: calc(var(--spacing) * 10);
   }
+  .mb-\[3px\] {
+    margin-bottom: 3px;
+  }
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
@@ -2336,6 +2363,9 @@
       border-color: color-mix(in oklab, var(--color-red-800) 60%, transparent);
     }
   }
+  .border-sky-300 {
+    border-color: var(--color-sky-300);
+  }
   .border-teal-400 {
     border-color: var(--color-teal-400);
   }
@@ -2536,6 +2566,15 @@
     .bg-red-950\/50 {
       background-color: color-mix(in oklab, var(--color-red-950) 50%, transparent);
     }
+  }
+  .bg-sky-50 {
+    background-color: var(--color-sky-50);
+  }
+  .bg-sky-100 {
+    background-color: var(--color-sky-100);
+  }
+  .bg-sky-700 {
+    background-color: var(--color-sky-700);
   }
   .bg-teal-50 {
     background-color: var(--color-teal-50);
@@ -3160,6 +3199,12 @@
   .text-red-800 {
     color: var(--color-red-800);
   }
+  .text-sky-700 {
+    color: var(--color-sky-700);
+  }
+  .text-sky-900 {
+    color: var(--color-sky-900);
+  }
   .text-teal-700 {
     color: var(--color-teal-700);
   }
@@ -3210,6 +3255,9 @@
   }
   .text-zinc-950 {
     color: var(--color-zinc-950);
+  }
+  .normal-case {
+    text-transform: none;
   }
   .uppercase {
     text-transform: uppercase;
@@ -3579,6 +3627,11 @@
     }
   }
   @media (hover: hover) {
+    .hover\:bg-sky-600:hover {
+      background-color: var(--color-sky-600);
+    }
+  }
+  @media (hover: hover) {
     .hover\:bg-violet-500:hover {
       background-color: var(--color-violet-500);
     }
@@ -3774,6 +3827,11 @@
   @media (width >= 40rem) {
     .sm\:w-\[26rem\] {
       width: 26rem;
+    }
+  }
+  @media (width >= 40rem) {
+    .sm\:grid-cols-1 {
+      grid-template-columns: repeat(1, minmax(0, 1fr));
     }
   }
   @media (width >= 40rem) {

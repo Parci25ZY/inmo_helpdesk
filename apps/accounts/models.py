@@ -6,6 +6,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.utils import phone_validator, valida_cedula
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -47,7 +49,22 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_('Correo Electrónico'), unique=True)
     first_name = models.CharField(_('Nombres'), max_length=150, blank=True)
     last_name = models.CharField(_('Apellidos'), max_length=150, blank=True)
-    phone = models.CharField(_('Teléfono'), max_length=20, blank=True, null=True)
+    cedula = models.CharField(
+        _('Cédula de Identidad'),
+        max_length=10,
+        unique=True,
+        null=True,
+        blank=True,   # Vacío permitido para usuarios pre-existentes; el validator valida si se provee
+        validators=[valida_cedula],
+        help_text=_('Cédula ecuatoriana de 10 dígitos. Requerida para verificar la identidad del usuario.'),
+    )
+    phone = models.CharField(
+        _('Teléfono'),
+        max_length=20,
+        blank=True,
+        null=True,
+        validators=[phone_validator],
+    )
     role = models.CharField(
         _('Rol'),
         max_length=20,

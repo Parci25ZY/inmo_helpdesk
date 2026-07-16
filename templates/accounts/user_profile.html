@@ -197,6 +197,22 @@
                             {% if request.user.is_active %}Activa{% else %}Inactiva{% endif %}
                         </p>
                     </div>
+                    <!-- Cédula: visible pero no editable por el usuario -->
+                    <div class="bg-zinc-50 border border-zinc-100 px-4 py-3 sm:col-span-2">
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-1">Cédula de Identidad</p>
+                        {% if request.user.cedula %}
+                        <p class="text-sm font-semibold text-zinc-700 font-mono tracking-widest">
+                            {{ request.user.cedula }}
+                        </p>
+                        {% else %}
+                        <p class="text-sm text-amber-600 font-medium">
+                            ⚠ No registrada — contacta al administrador para agregarla.
+                        </p>
+                        {% endif %}
+                        <p class="text-[0.65rem] text-zinc-400 mt-1">
+                            La cédula solo puede ser modificada por un administrador.
+                        </p>
+                    </div>
                 </div>
             </fieldset>
 

@@ -71,34 +71,91 @@ class TicketAdminValidateForm(forms.ModelForm):
       * Asignar el técnico definitivo (puede aceptar el sugerido).
       * Ver la carga de trabajo y disponibilidad de cada técnico.
 
+    Los técnicos sin capacidad aparecen en un optgroup separado con sus
+    opciones deshabilitadas, evitando selecciones que luego fallarán al
+    agendar (WorkloadExceededError).
+
     Ya NO programa fecha/hora. Eso lo hace el inquilino en el paso siguiente.
+
+    Nota de implementación: usamos TypedChoiceField (en lugar de ModelChoiceField)
+    porque ModelChoiceField ignora los choices asignados manualmente — siempre
+    itera su queryset. TypedChoiceField respeta la lista de choices y coerce=int
+    convierte el PK. clean_tecnico() resuelve el PK al objeto CustomUser.
     """
 
-    def __init__(self, *args, **kwargs):
+    # Campo declarado explícitamente como TypedChoiceField para respetar
+    # los choices con optgroups construidos dinámicamente en __init__.
+    tecnico = forms.TypedChoiceField(
+        coerce=int,
+        empty_value=None,
+        required=True,
+        widget=forms.Select(attrs={'class': SELECT_CLASS}),
+        label='Técnico',
+    )
+
+    def __init__(self, *args, prioridad: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Inferir prioridad desde la instancia si no se pasa explícitamente
+        if prioridad is None and self.instance and self.instance.pk:
+            prioridad = self.instance.prioridad
+
         tecnicos = CustomUser.objects.filter(
             role=CustomUser.Roles.TECNICO,
             is_active=True,
         ).prefetch_related('especialidades_tecnico', 'horarios').order_by('first_name')
 
-        # Construir choices con info de carga de trabajo y disponibilidad
-        choices = [('', '— Seleccionar técnico —')]
+        # Separar técnicos con y sin capacidad para la prioridad del ticket
+        con_capacidad = []
+        sin_capacidad = []
         for t in tecnicos:
             carga = t.carga_trabajo_actual
             limite = t.max_carga_trabajo
             disponible = t.carga_disponible
             en_horario = t.esta_disponible_ahora()
-            indicador_carga = '🟢' if disponible > 3 else ('🟡' if disponible > 0 else '🔴')
             indicador_horario = '⏰' if en_horario else '💤'
             especialidades = t.especialidades_display or 'Sin especialidad'
+
+            tiene_capacidad = prioridad is None or t.puede_aceptar_ticket(prioridad)
+            indicador_carga = '🟢' if disponible > 3 else ('🟡' if disponible > 0 else '🔴')
+
             label = (
                 f'{indicador_carga}{indicador_horario} {t.get_full_name()} '
                 f'({especialidades}) — '
                 f'Carga: {carga}/{limite}'
             )
-            choices.append((t.pk, label))
+            if tiene_capacidad:
+                con_capacidad.append((t.pk, label))
+            else:
+                sin_capacidad.append((t.pk, label + ' · Sin capacidad'))
 
+        # Construir choices con optgroups: disponibles primero, sobrecargados al final
+        choices = [('', '— Seleccionar técnico —')]
+        choices.extend(con_capacidad)
+        if sin_capacidad:
+            choices.append(('Sin capacidad', sin_capacidad))  # optgroup label legible
+
+        # Asignar choices y widget personalizado
         self.fields['tecnico'].choices = choices
+        self.fields['tecnico'].widget = _TecnicoSelectWidget(
+            sobrecargados={pk for pk, _ in sin_capacidad},
+            attrs={'class': SELECT_CLASS},
+        )
+        self.fields['tecnico'].widget.choices = choices
+
+        # Pre-seleccionar técnico actual si existe
+        if self.instance and self.instance.pk and self.instance.tecnico_id:
+            self.fields['tecnico'].initial = self.instance.tecnico_id
+
+    def clean_tecnico(self):
+        """Convierte el PK del técnico seleccionado al objeto CustomUser."""
+        pk = self.cleaned_data.get('tecnico')
+        if not pk:
+            raise forms.ValidationError('Debes seleccionar un técnico.')
+        try:
+            return CustomUser.objects.get(pk=pk, role=CustomUser.Roles.TECNICO, is_active=True)
+        except CustomUser.DoesNotExist:
+            raise forms.ValidationError('Técnico no válido o inactivo.')
 
     class Meta:
         model = Ticket
@@ -106,8 +163,26 @@ class TicketAdminValidateForm(forms.ModelForm):
         widgets = {
             'categoria': forms.Select(attrs={'class': SELECT_CLASS}),
             'prioridad': forms.Select(attrs={'class': SELECT_CLASS}),
-            'tecnico': forms.Select(attrs={'class': SELECT_CLASS}),
+            # 'tecnico' se gestiona íntegramente en __init__
         }
+
+
+class _TecnicoSelectWidget(forms.Select):
+    """Widget <select> que deshabilita las opciones de técnicos sobrecargados.
+
+    Los técnicos sin capacidad quedan visibles (para transparencia) pero con
+    el atributo ``disabled`` para impedir su selección accidental.
+    """
+
+    def __init__(self, *args, sobrecargados: set | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._sobrecargados = sobrecargados or set()
+
+    def create_option(self, name, value, label, selected, index, **kwargs):
+        option = super().create_option(name, value, label, selected, index, **kwargs)
+        if value and str(value) in {str(pk) for pk in self._sobrecargados}:
+            option['attrs']['disabled'] = True
+        return option
 
 
 class InquilinoScheduleForm(forms.ModelForm):
