@@ -457,7 +457,7 @@
     display: none;
 }
 
-/* ── Móvil: drawer ── */
+/* ── Móvil y Tablet: drawer ── */
 @media (max-width: 1199px) {
     .tickets-workspace {
         display: block;
@@ -469,14 +469,15 @@
         right: 0;
         bottom: 0;
         z-index: 55;
-        width: min(100%, 22rem);
-        height: 100vh;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
         max-height: none;
         transform: translateX(100%);
         transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
         pointer-events: none;
     }
-
+    
     .tickets-workspace__aside.is-open {
         transform: translateX(0);
         pointer-events: auto;
@@ -517,23 +518,54 @@
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1rem;
+        padding: 0.75rem 1.25rem;
         background: #18181b;
         color: #fbbf24;
         border: 2px solid #18181b;
+        border-radius: 9999px;
         font-size: 0.65rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.12em;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
         cursor: pointer;
+        transition: transform 0.2s, background 0.2s, color 0.2s;
     }
     .chatbot-fab:hover {
         background: #fbbf24;
         color: #18181b;
     }
     .chatbot-fab:active {
-        transform: scale(0.98);
+        transform: scale(0.96);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .tickets-workspace__aside {
+        top: auto;
+        bottom: 5.5rem;
+        right: 1.5rem;
+        height: calc(100dvh - 7rem);
+        max-height: 42rem;
+        max-width: 25rem;
+        transform: translateX(calc(100% + 2rem));
+    }
+    
+    .tickets-workspace__aside.is-open {
+        transform: translateX(0);
+    }
+    
+    .tickets-workspace__aside .chatbot-shell {
+        border-radius: 1rem;
+        border: 1px solid var(--chat-border);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08);
+    }
+
+    .chatbot-fab {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        padding: 0.85rem 1.5rem;
+        font-size: 0.7rem;
     }
 }
 

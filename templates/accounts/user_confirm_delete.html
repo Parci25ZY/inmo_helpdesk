@@ -1,26 +1,26 @@
 {% extends 'base.html' %}
 
-{% block title %}Eliminar Usuario — InmoHelpdesk{% endblock %}
+{% block title %}{% if tiene_registros %}Gestionar Usuario{% else %}Eliminar Usuario{% endif %} — InmoHelpdesk{% endblock %}
 
 {% block content %}
 <div class="min-h-screen flex flex-col bg-zinc-50">
 
-    <!-- ── Header ───────────────────────────────────────────────────────── -->
-    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 border-red-500 gap-4">
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <header class="bg-zinc-950 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b-4 {% if tiene_registros %}border-amber-400{% else %}border-red-500{% endif %} gap-4">
         <div class="flex items-center gap-4">
-            <svg class="w-6 h-6 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <svg class="w-6 h-6 {% if tiene_registros %}text-amber-400{% else %}text-red-400{% endif %} shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
             </svg>
             <div>
                 <h1 class="text-lg font-bold tracking-tight">
                     InmoHelpdesk
                     <span class="font-normal text-zinc-600 mx-1.5">/</span>
-                    <a href="{% url 'user_list' %}" class="hover:text-red-400 transition-colors">Usuarios</a>
+                    <a href="{% url 'user_list' %}" class="hover:text-amber-400 transition-colors">Usuarios</a>
                     <span class="font-normal text-zinc-600 mx-1.5">/</span>
-                    Eliminar
+                    {% if tiene_registros %}Gestionar{% else %}Eliminar{% endif %}
                 </h1>
                 <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">
-                    ACCIÓN IRREVERSIBLE &nbsp;·&nbsp; MÓDULO ADMINISTRATIVO
+                    MÓDULO ADMINISTRATIVO
                 </p>
             </div>
         </div>
@@ -28,23 +28,88 @@
     </header>
 
     <main class="flex-1 flex items-start justify-center px-4 sm:px-6 py-16 lg:px-8">
-        <div class="w-full max-w-lg font-space">
+        <div class="w-full max-w-lg">
             {% include 'partials/_role_banner.html' %}
 
-            <!-- ── Tarjeta de advertencia ──────────────────────────── -->
-            <div class="bg-white border border-red-200 shadow-sm overflow-hidden">
-                <!-- Franja de peligro -->
-                <div class="h-1 bg-red-500"></div>
+            <!-- ── Tarjeta principal ──────────────────────────────────── -->
+            <div class="bg-white border {% if tiene_registros %}border-amber-300{% else %}border-red-200{% endif %} shadow-sm overflow-hidden">
+                <div class="h-1 {% if tiene_registros %}bg-amber-400{% else %}bg-red-500{% endif %}"></div>
                 <div class="p-8">
 
-                    <!-- Icono de advertencia -->
-                    <div class="flex items-center justify-center w-14 h-14 bg-red-50 border border-red-200 mb-6">
+                    <!-- Icono -->
+                    <div class="flex items-center justify-center w-14 h-14 {% if tiene_registros %}bg-amber-50 border border-amber-200{% else %}bg-red-50 border border-red-200{% endif %} mb-6">
+                        {% if tiene_registros %}
+                        <svg class="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        </svg>
+                        {% else %}
                         <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
+                        {% endif %}
                     </div>
 
-                    <!-- Título -->
+                    <!-- Título y descripción -->
+                    {% if tiene_registros %}
+                    <h2 class="text-xl font-bold text-zinc-900 tracking-tight mb-2">
+                        No se puede eliminar este usuario
+                    </h2>
+                    <p class="text-sm text-zinc-500 leading-relaxed mb-4">
+                        <strong class="text-zinc-700">{{ user_obj.get_full_name }}</strong> tiene registros
+                        vinculados en el sistema que protegen la integridad del historial.
+                    </p>
+
+                    <!-- Resumen de registros por rol -->
+                    <div class="bg-zinc-50 border border-zinc-200 divide-y divide-zinc-200 mb-4">
+                        {% if user_obj.role == 'TECNICO' %}
+                        {% if tickets_count %}
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <span class="text-sm text-zinc-700">Tickets asignados</span>
+                            </div>
+                            <span class="text-sm font-bold text-indigo-700">{{ tickets_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        {% if tickets_count %}
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <span class="text-sm text-zinc-700">Tickets reportados</span>
+                            </div>
+                            <span class="text-sm font-bold text-zinc-700">{{ tickets_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                        {% if mensajes_count %}
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                <span class="text-sm text-zinc-700">Mensajes enviados</span>
+                            </div>
+                            <span class="text-sm font-bold text-zinc-700">{{ mensajes_count }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Alternativa recomendada -->
+                    <div class="bg-amber-50 border border-amber-300 p-4 mb-6">
+                        <p class="text-xs font-bold text-amber-800 uppercase tracking-wide mb-1">Alternativa recomendada</p>
+                        <p class="text-sm text-amber-700">
+                            <strong>Desactivar</strong> la cuenta: el usuario pierde acceso inmediato pero sus
+                            {% if user_obj.role == 'TECNICO' %}tickets asignados{% else %}tickets reportados{% endif %}
+                            y el historial de auditoría quedan intactos.
+                        </p>
+                    </div>
+
+                    {% else %}
                     <h2 class="text-xl font-bold text-zinc-900 tracking-tight mb-2">
                         ¿Eliminar este usuario?
                     </h2>
@@ -52,10 +117,13 @@
                         Esta acción es <strong class="text-zinc-700">permanente e irreversible</strong>.
                         El usuario perderá acceso inmediato al sistema y todos sus datos quedarán eliminados.
                     </p>
+                    {% endif %}
 
-                    <!-- Datos del usuario a eliminar -->
+                    <!-- Datos del usuario -->
                     <div class="bg-zinc-50 border border-zinc-200 p-4 mb-8">
-                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-3">Usuario a eliminar</p>
+                        <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400 mb-3">
+                            Usuario a {% if tiene_registros %}gestionar{% else %}eliminar{% endif %}
+                        </p>
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 shrink-0 bg-zinc-900 flex items-center justify-center text-xs font-bold text-amber-400 uppercase tracking-wider select-none">
                                 {% if user_obj.first_name %}{{ user_obj.first_name|slice:":1" }}{{ user_obj.last_name|slice:":1" }}{% else %}{{ user_obj.email|slice:":2"|upper }}{% endif %}
@@ -74,29 +142,54 @@
                     </div>
 
                     <!-- Acciones -->
-                    <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex flex-col gap-3">
                         <a href="{% url 'user_list' %}"
-                           class="flex-1 inline-flex items-center justify-center border border-zinc-300 px-5 py-3 text-sm font-semibold tracking-wide uppercase text-zinc-700 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-200">
-                            Cancelar
+                           class="inline-flex items-center justify-center border border-zinc-300 px-5 py-3 text-sm font-semibold tracking-wide uppercase text-zinc-700 hover:border-zinc-900 hover:text-zinc-900 transition-all duration-200">
+                            Cancelar — Volver al listado
                         </a>
-                        <form method="POST" action="" class="flex-1">
+
+                        {% if tiene_registros %}
+                        <!-- Desactivar (única opción cuando hay registros) -->
+                        <form method="POST" action="">
                             {% csrf_token %}
+                            <input type="hidden" name="accion" value="desactivar">
                             <button type="submit"
-                                class="group w-full inline-flex items-center justify-between bg-red-600 text-white px-5 py-3 text-sm font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-red-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
-                                Sí, eliminar usuario
+                                class="group w-full inline-flex items-center justify-between bg-amber-500 text-white px-5 py-3 text-sm font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-amber-600 active:scale-[0.98]">
+                                Desactivar cuenta (conserva historial)
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                </svg>
+                            </button>
+                        </form>
+                        {% else %}
+                        <!-- Eliminar definitivamente -->
+                        <form method="POST" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="eliminar">
+                            <button type="submit"
+                                class="group w-full inline-flex items-center justify-between bg-red-600 text-white px-5 py-3 text-sm font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-red-700 active:scale-[0.98]">
+                                Sí, eliminar usuario definitivamente
                                 <svg class="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                     <path stroke-linecap="square" stroke-linejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                                 </svg>
                             </button>
                         </form>
+                        {% endif %}
                     </div>
 
                 </div>
             </div>
 
-            <!-- Nota informativa -->
             <p class="mt-4 text-center text-xs font-mono text-zinc-400 tracking-wide">
-                Esta operación quedará registrada en el historial del sistema.
+                {% if tiene_registros %}
+                    {% if user_obj.role == 'TECNICO' %}
+                        Técnico con {{ tickets_count }} ticket(s) asignado(s){% if mensajes_count %} y {{ mensajes_count }} mensaje(s){% endif %} — eliminación bloqueada.
+                    {% else %}
+                        Residente con {{ tickets_count }} ticket(s){% if mensajes_count %} y {{ mensajes_count }} mensaje(s){% endif %} — eliminación bloqueada.
+                    {% endif %}
+                {% else %}
+                    Esta operación quedará registrada en el historial del sistema.
+                {% endif %}
             </p>
 
         </div>

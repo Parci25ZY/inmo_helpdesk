@@ -39,3 +39,25 @@ def notificaciones_marcar_leidas(request):
     ).update(leido=True)
     
     return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def notificacion_marcar_leida(request, pk):
+    """Marca una sola notificación como leída y retorna el nuevo conteo."""
+    updated = Notificacion.objects.filter(
+        pk=pk,
+        usuario=request.user,
+        leido=False,
+    ).update(leido=True)
+
+    unread_count = Notificacion.objects.filter(
+        usuario=request.user,
+        leido=False,
+    ).count()
+
+    return Response({
+        'status': 'ok',
+        'updated': bool(updated),
+        'unread_count': unread_count,
+    }, status=status.HTTP_200_OK)

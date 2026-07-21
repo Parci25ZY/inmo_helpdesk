@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#18181b;padding:32px 40px;border-bottom:4px solid #f59e0b;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">
+                🔔 Nuevo Ticket Creado
+              </h1>
+              <p style="margin:6px 0 0;color:#a1a1aa;font-size:12px;font-family:monospace;letter-spacing:1px;text-transform:uppercase;">
+                InmoHelpdesk · Notificación Automática
+              </p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="margin:0 0 20px;color:#3f3f46;font-size:15px;line-height:1.6;">
+                Un residente ha reportado una nueva incidencia que requiere tu atención.
+              </p>
+
+              <!-- Ticket Card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:12px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:24px;">
+                    <p style="margin:0 0 4px;color:#92400e;font-size:11px;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;">
+                      {{ ticket.codigo }}
+                    </p>
+                    <h2 style="margin:0 0 12px;color:#18181b;font-size:18px;font-weight:700;">
+                      {{ ticket.titulo }}
+                    </h2>
+                    <p style="margin:0 0 16px;color:#52525b;font-size:14px;line-height:1.5;">
+                      {{ ticket.descripcion|truncatewords:50 }}
+                    </p>
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding-right:16px;">
+                          <span style="display:inline-block;background-color:#f59e0b;color:#ffffff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;">
+                            {{ ticket.get_prioridad_display }}
+                          </span>
+                        </td>
+                        <td>
+                          <span style="display:inline-block;background-color:#e4e4e7;color:#3f3f46;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;">
+                            {{ ticket.get_categoria_display }}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Info Grid -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td width="50%" style="padding:12px 16px;background-color:#f4f4f5;border-radius:8px 0 0 8px;">
+                    <p style="margin:0;color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Residente</p>
+                    <p style="margin:4px 0 0;color:#18181b;font-size:14px;font-weight:600;">{{ ticket.inquilino.get_full_name }}</p>
+                    <p style="margin:2px 0 0;color:#71717a;font-size:12px;">{{ ticket.inquilino.email }}</p>
+                  </td>
+                  <td width="50%" style="padding:12px 16px;background-color:#f4f4f5;border-radius:0 8px 8px 0;">
+                    <p style="margin:0;color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Ubicación</p>
+                    <p style="margin:4px 0 0;color:#18181b;font-size:14px;font-weight:600;">{{ ticket.unidad.edificio.nombre }}</p>
+                    <p style="margin:2px 0 0;color:#71717a;font-size:12px;">Unidad #{{ ticket.unidad.numero }} · Piso {{ ticket.unidad.piso }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:8px 0;">
+                    <a href="{{ site_url }}/tickets/{{ ticket.pk }}/" style="display:inline-block;background-color:#18181b;color:#ffffff;font-size:14px;font-weight:700;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+                      Ver Ticket →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
+              <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center;">
+                Este correo fue enviado automáticamente por InmoHelpdesk. No responda a este mensaje.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,10 +1,12 @@
 {% load static tailwind_tags %}
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}InmoHelpdesk{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'E:\inmo_helpdesk\static\images\favicon.svg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap" rel="stylesheet">
@@ -21,6 +23,7 @@
             --accent-soft: #ffd8ad;
         }
     </style>
+    <link rel="stylesheet" href="{% static 'css/responsive-enhancements.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-zinc-950 text-zinc-100" style="font-family: 'Space Grotesk', sans-serif;">
@@ -208,5 +211,9 @@
         </footer>
     </div>
     {% endblock %}
+    {% if user.is_authenticated %}
+        {% include 'partials/_floating_tab_bar.html' %}
+        <script src="{% static 'js/floating-tab-bar.js' %}" defer></script>
+    {% endif %}
 </body>
 </html>

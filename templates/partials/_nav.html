@@ -3,49 +3,60 @@
   Detecta la página activa con request.resolver_match.url_name y filtra módulos por rol.
 {% endcomment %}
 {% with url_name=request.resolver_match.url_name %}
-<nav class="flex flex-wrap items-center gap-1" aria-label="Módulos del sistema">
+<nav class="flex items-center justify-end gap-2 ml-auto" aria-label="Módulos del sistema">
 
-    <a href="{% url 'dashboard' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'dashboard' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-        Panel
-    </a>
+    <!-- ── Enlaces de navegación principal (Solo Web Desktop >=1200px) ── -->
+    <div class="desktop-only-nav hidden xl:flex items-center gap-1">
+        <a href="{% url 'dashboard' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'dashboard' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            Panel
+        </a>
 
-    <span class="text-zinc-700 text-xs">/</span>
+        <span class="text-zinc-700 text-xs">/</span>
 
-    <a href="{% url 'ticket_list' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'ticket_list' or url_name == 'ticket_create' or url_name == 'ticket_detail' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        Tickets
-    </a>
+        <a href="{% url 'ticket_list' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'ticket_list' or url_name == 'ticket_create' or url_name == 'ticket_detail' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Tickets
+        </a>
 
-    {% if request.user.is_admin %}
-    <span class="text-zinc-700 text-xs">/</span>
-    <a href="{% url 'edificio_list' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if 'edificio' in url_name %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5"/></svg>
-        Edificios
-    </a>
+        {% if request.user.is_admin %}
+        <span class="text-zinc-700 text-xs">/</span>
+        <a href="{% url 'edificio_list' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if 'edificio' in url_name %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5"/></svg>
+            Edificios
+        </a>
 
-    <span class="text-zinc-700 text-xs">/</span>
-    <a href="{% url 'unidad_list' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if 'unidad' in url_name %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-        Unidades
-    </a>
+        <span class="text-zinc-700 text-xs">/</span>
+        <a href="{% url 'unidad_list' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if 'unidad' in url_name %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+            Unidades
+        </a>
 
-    <span class="text-zinc-700 text-xs">/</span>
-    <a href="{% url 'user_list' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'user_list' or url_name == 'user_create' or url_name == 'user_edit' or url_name == 'user_delete' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        Usuarios
-    </a>
-    {% endif %}
+        <span class="text-zinc-700 text-xs">/</span>
+        <a href="{% url 'user_list' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'user_list' or url_name == 'user_create' or url_name == 'user_edit' or url_name == 'user_delete' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Usuarios
+        </a>
+        {% endif %}
 
-    <!-- ═══ CAMPANA DE NOTIFICACIONES ═══════════════════════════════════ -->
-    <div class="relative ml-3" id="notification-component">
+        <span class="text-zinc-700 text-xs">/</span>
+        <a href="{% url 'user_profile' %}"
+           class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'user_profile' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Perfil
+        </a>
+        <span class="text-zinc-700 mx-1">|</span>
+    </div>
+
+    <!-- ═══ CAMPANA DE NOTIFICACIONES (Solo visible en Desktop >=1200px, en móvil va en Floating Tab Bar) ═══ -->
+    <div class="relative ml-1 sm:ml-3" id="notification-component">
         <button type="button" id="notif-toggle-btn"
-                class="relative flex items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:text-amber-400 hover:bg-zinc-800/60 transition-all duration-200 cursor-pointer"
+                class="desktop-only-nav hidden xl:flex relative items-center justify-center w-9 h-9 rounded-full text-zinc-400 hover:text-amber-400 hover:bg-zinc-800/60 transition-all duration-200 cursor-pointer"
                 aria-label="Notificaciones">
             <!-- Bell icon (filled when has unread) -->
             <svg id="notif-bell-empty" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +76,7 @@
 
         <!-- ═══ DROPDOWN CARD ═══════════════════════════════════════════ -->
         <div id="notif-dropdown"
-             class="hidden absolute right-0 mt-3 w-[22rem] sm:w-[26rem] z-50 overflow-hidden
+             class="hidden absolute right-0 mt-3 w-[20rem] sm:w-[26rem] z-50 overflow-hidden
                     transform opacity-0 scale-95 transition-all duration-200 ease-out origin-top-right"
              style="will-change: transform, opacity;">
 
@@ -112,20 +123,14 @@
         </div>
     </div>
 
-    <span class="text-zinc-700 text-xs">/</span>
-    <a href="{% url 'user_profile' %}"
-       class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase transition-colors duration-150 {% if url_name == 'user_profile' %}text-amber-400 border-b border-amber-400{% else %}text-zinc-400 hover:text-white{% endif %}">
-        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        Perfil
-    </a>
+    <span class="text-zinc-700 mx-1 hidden xl:inline">|</span>
 
-    <span class="text-zinc-700 mx-1">|</span>
-
-    <form action="{% url 'logout' %}" method="post" class="inline">
+    <!-- ═══ BOTÓN SALIR (Siempre accesible y limpio) ════════════════════ -->
+    <form action="{% url 'logout' %}" method="post" class="inline ml-1">
         {% csrf_token %}
         <button type="submit" class="flex items-center gap-1.5 px-2.5 py-1.5 text-[0.65rem] font-mono tracking-widest uppercase text-zinc-400 hover:text-white transition-colors duration-150 group bg-transparent border-none cursor-pointer">
-            Salir
-            <svg class="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <span>Salir</span>
+            <svg class="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-0.5 text-amber-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         </button>
     </form>
 
@@ -191,6 +196,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const bellFilled = document.getElementById('notif-bell-filled');
 
     let isOpen = false;
+    let lastKnownCount = -1; // -1 = no data yet
+
+    // ── Notification Sound (Web Audio API) ──
+    let audioCtx = null;
+
+    function playNotificationSound() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+
+            // Two-tone chime: pleasant and non-intrusive
+            [880, 1174.66].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0, now + i * 0.12);
+                gain.gain.linearRampToValueAtTime(0.15, now + i * 0.12 + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + i * 0.12);
+                osc.stop(now + i * 0.12 + 0.4);
+            });
+        } catch (e) { /* Audio not available — fail silently */ }
+    }
 
     // ── Load initial count silently ──
     fetchNotifications(false);
@@ -204,9 +237,14 @@ document.addEventListener('DOMContentLoaded', () => {
         isOpen ? closeDropdown() : openDropdown();
     });
 
+    window.__toggleNotifDropdown = () => {
+        isOpen ? closeDropdown() : openDropdown();
+    };
+
     // ── Click outside ──
     document.addEventListener('click', (e) => {
-        if (isOpen && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) closeDropdown();
+        const floatNotifBtn = document.getElementById('floating-tab-notif-btn');
+        if (isOpen && !dropdown.contains(e.target) && !toggleBtn.contains(e.target) && !floatNotifBtn?.contains(e.target)) closeDropdown();
     });
 
     // ── Escape key ──
@@ -221,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         axios.post('/tickets/api/notificaciones/marcar-leidas/', {}, {
             headers: { 'X-CSRFToken': '{{ csrf_token }}' }
         })
-        .then(() => { updateBadge(0); renderEmpty(); markRead.textContent = '✓ todo leído'; })
+        .then(() => { updateBadge(0); lastKnownCount = 0; renderEmpty(); markRead.textContent = '✓ todo leído'; })
         .catch(() => { markRead.textContent = '✓ todo leído'; });
     });
 
@@ -253,7 +291,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         axios.get('/tickets/api/notificaciones/')
             .then(res => {
-                updateBadge(res.data.count);
+                const newCount = res.data.count;
+
+                // Play sound when count increases (new notification arrived)
+                if (lastKnownCount >= 0 && newCount > lastKnownCount) {
+                    playNotificationSound();
+                }
+                lastKnownCount = newCount;
+
+                updateBadge(newCount);
                 if (renderList) {
                     res.data.results.length === 0 ? renderEmpty() : renderItems(res.data.results);
                 }
@@ -264,6 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateBadge(count) {
+        const floatBadge = document.getElementById('floating-notif-badge');
+        const floatBellEmpty = document.getElementById('floating-bell-empty');
+        const floatBellFilled = document.getElementById('floating-bell-filled');
+
         if (count > 0) {
             badge.textContent = count > 9 ? '9+' : count;
             badge.classList.remove('hidden');
@@ -273,6 +323,14 @@ document.addEventListener('DOMContentLoaded', () => {
             headerCnt.classList.add('inline-flex');
             bellEmpty.classList.add('hidden');
             bellFilled.classList.remove('hidden');
+
+            if (floatBadge) {
+                floatBadge.textContent = count > 9 ? '9+' : count;
+                floatBadge.classList.remove('hidden');
+                floatBadge.classList.add('inline-flex');
+                floatBellEmpty?.classList.add('hidden');
+                floatBellFilled?.classList.remove('hidden');
+            }
         } else {
             badge.classList.add('hidden');
             badge.classList.remove('inline-flex');
@@ -280,7 +338,28 @@ document.addEventListener('DOMContentLoaded', () => {
             headerCnt.classList.remove('inline-flex');
             bellFilled.classList.add('hidden');
             bellEmpty.classList.remove('hidden');
+
+            if (floatBadge) {
+                floatBadge.classList.add('hidden');
+                floatBadge.classList.remove('inline-flex');
+                floatBellFilled?.classList.add('hidden');
+                floatBellEmpty?.classList.remove('hidden');
+            }
         }
+    }
+
+    function markSingleRead(notifId, linkEl) {
+        // Mark this specific notification as read via API
+        axios.patch(`/tickets/api/notificaciones/${notifId}/leer/`, {}, {
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(res => {
+            const newCount = res.data.unread_count;
+            lastKnownCount = newCount;
+            updateBadge(newCount);
+        })
+        .catch(() => { /* Navigate anyway */ });
+        // Don't prevent default — allow navigation to the ticket
     }
 
     function renderEmpty() {
@@ -327,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '';
 
             return `
-            <a href="${actionUrl}" class="notif-item">
+            <a href="${actionUrl}" class="notif-item" data-notif-id="${item.id}" onclick="window.__markNotifRead(${item.id}, this)">
                 <div style="display: flex; align-items: flex-start; gap: 12px; width: 100%;">
                     <!-- Icon circle -->
                     <div style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background-color: #1a1a1a; display: flex; align-items: center; justify-content: center; margin-top: 2px;">
@@ -354,5 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </a>`;
         }).join('');
     }
+
+    // Expose mark-single-read globally so inline onclick can call it
+    window.__markNotifRead = markSingleRead;
 });
 </script>

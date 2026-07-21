@@ -123,20 +123,81 @@ def user_edit(request, user_id):
 
 @admin_required
 def user_delete(request, user_id):
-    """Eliminación de usuarios por el administrador"""
+    """Eliminación de usuarios por el administrador.
+
+    Si el usuario tiene tickets o mensajes vinculados, no puede eliminarse
+    sin romper la integridad de los registros históricos. En ese caso se
+    desactiva (is_active=False) en lugar de borrar.
+
+    · INQUILINO: sus tickets tienen FK PROTECT → siempre bloqueado si tiene tickets.
+    · TECNICO:   sus tickets asignados tienen SET_NULL (borrable), pero sus mensajes
+                 tienen PROTECT y además no tiene sentido borrar un técnico con
+                 trabajo activo/pasado → se bloquea igual.
+    """
+    from django.db.models import ProtectedError
+
     user = get_object_or_404(CustomUser, id=user_id)
-    
+
     if request.user.id == user.id:
         messages.error(request, 'No puedes eliminar tu propia cuenta.')
         return redirect('user_list')
-    
+
+    def _get_registros(u):
+        """Devuelve (tiene_registros, tickets_count, mensajes_count) según rol."""
+        if u.role == u.Roles.INQUILINO:
+            tc = u.tickets_creados.count()
+            mc = u.mensajes_ticket.count()
+        elif u.role == u.Roles.TECNICO:
+            tc = u.tickets_asignados.count()
+            mc = u.mensajes_ticket.count()
+        else:
+            tc = 0
+            mc = u.mensajes_ticket.count() if hasattr(u, 'mensajes_ticket') else 0
+        return (tc + mc) > 0, tc, mc
+
     if request.method == 'POST':
         nombre = user.get_full_name()
-        user.delete()
-        messages.success(request, f'Usuario {nombre} eliminado correctamente.')
+        accion = request.POST.get('accion', 'eliminar')
+
+        if accion == 'desactivar':
+            user.is_active = False
+            user.save(update_fields=['is_active'])
+            messages.warning(
+                request,
+                f'Usuario {nombre} desactivado. Sus registros históricos se conservan '
+                'y ha perdido acceso al sistema de forma inmediata.',
+            )
+            return redirect('user_list')
+
+        # Intentar eliminación física
+        try:
+            user.delete()
+            messages.success(request, f'Usuario {nombre} eliminado correctamente.')
+        except ProtectedError:
+            tiene_registros, tickets_count, mensajes_count = _get_registros(user)
+            messages.error(
+                request,
+                f'No se puede eliminar a {nombre} porque tiene registros vinculados '
+                '(tickets y/o mensajes). Usa la opción "Desactivar" para revocar el acceso '
+                'sin perder el historial.',
+            )
+            return render(request, 'accounts/user_confirm_delete.html', {
+                'user_obj': user,
+                'tiene_registros': True,
+                'tickets_count': tickets_count,
+                'mensajes_count': mensajes_count,
+            })
+
         return redirect('user_list')
-    
-    return render(request, 'accounts/user_confirm_delete.html', {'user_obj': user})
+
+    # GET: precomputar registros vinculados
+    tiene_registros, tickets_count, mensajes_count = _get_registros(user)
+    return render(request, 'accounts/user_confirm_delete.html', {
+        'user_obj': user,
+        'tiene_registros': tiene_registros,
+        'tickets_count': tickets_count,
+        'mensajes_count': mensajes_count,
+    })
 
 @login_required
 def user_profile(request):

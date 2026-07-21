@@ -43,6 +43,17 @@ class TicketCategory(models.TextChoices):
     OTRO = 'OTRO', _('Otro')
 
 
+class HistorialDisplayItem:
+    """Elemento de presentación de historial adaptado al rol."""
+
+    def __init__(self, estado_anterior_display, estado_nuevo_display, creado_en, actor=None, nota=''):
+        self.estado_anterior_display = estado_anterior_display
+        self.estado_nuevo_display = estado_nuevo_display
+        self.creado_en = creado_en
+        self.actor = actor
+        self.nota = nota
+
+
 class Ticket(models.Model):
     """Orden de mantenimiento dentro del sistema.
 
@@ -188,6 +199,83 @@ class Ticket(models.Model):
     def is_aprobado(self) -> bool:
         """True cuando el admin aprobó pero el inquilino aún no agendó."""
         return self.estado == TicketStatus.APROBADO
+
+    @property
+    def estado_display_simplificado(self) -> str:
+        """Devuelve la etiqueta de estado simplificada: CREADO → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO."""
+        if self.estado in {
+            TicketStatus.CREADO_PENDIENTE_IA,
+            TicketStatus.ANALIZADO_POR_IA,
+            TicketStatus.PENDIENTE_VALIDACION,
+            TicketStatus.APROBADO,
+        }:
+            return 'Creado'
+        return self.get_estado_display()
+
+    def get_estado_display_user(self, user) -> str:
+        """Devuelve la etiqueta de estado simplificada para residente y técnico."""
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False):
+            return self.get_estado_display()
+        return self.estado_display_simplificado
+
+    def get_historial_para_usuario(self, user):
+        """Devuelve el historial adaptado al rol del usuario.
+
+        Para Admin: historial completo con todos los estados intermedios.
+        Para Residente y Técnico: progresión limpia
+            CREADO → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO.
+        """
+        historial = list(self.historial.all())
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False):
+            return [
+                HistorialDisplayItem(
+                    estado_anterior_display=h.get_estado_anterior_display() if h.estado_anterior else '',
+                    estado_nuevo_display=h.get_estado_nuevo_display(),
+                    creado_en=h.creado_en,
+                    actor=h.actor,
+                    nota=h.nota,
+                )
+                for h in historial
+            ]
+
+        items = []
+        estados_visibles = {
+            TicketStatus.ASIGNADO: 'Asignado',
+            TicketStatus.EN_CAMINO: 'En Camino',
+            TicketStatus.EN_PROGRESO: 'En Progreso',
+            TicketStatus.RESUELTO: 'Resuelto',
+            TicketStatus.CANCELADO: 'Cancelado',
+        }
+        primer_item = True
+        ultimo_estado_display = ''
+
+        for h in historial:
+            if primer_item or h.estado_nuevo == TicketStatus.CREADO_PENDIENTE_IA:
+                items.append(
+                    HistorialDisplayItem(
+                        estado_anterior_display='',
+                        estado_nuevo_display='Creado',
+                        creado_en=h.creado_en,
+                        actor=h.actor,
+                        nota=h.nota,
+                    )
+                )
+                ultimo_estado_display = 'Creado'
+                primer_item = False
+            elif h.estado_nuevo in estados_visibles:
+                nuevo_disp = estados_visibles[h.estado_nuevo]
+                items.append(
+                    HistorialDisplayItem(
+                        estado_anterior_display=ultimo_estado_display,
+                        estado_nuevo_display=nuevo_disp,
+                        creado_en=h.creado_en,
+                        actor=h.actor,
+                        nota=h.nota,
+                    )
+                )
+                ultimo_estado_display = nuevo_disp
+
+        return items
 
 
 def evidencia_upload_path(instance: 'EvidenciaTicket', filename: str) -> str:

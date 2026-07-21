@@ -326,6 +326,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         )
 
         ctx.update({
+            'historial_estados': ticket.get_historial_para_usuario(user),
+            'estado_display_user': ticket.get_estado_display_user(user),
             'transiciones_disponibles': transiciones,
             'transiciones_con_label': [
                 (t, _TRANSITION_LABELS.get(t, t)) for t in transiciones
@@ -397,6 +399,22 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
                 messages.error(request, 'No tienes una unidad asignada. Contacta al administrador.')
                 return redirect('ticket_list')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['inquilino'] = self.request.user
+        return kwargs
+
+    def form_invalid(self, form):
+        """Muestra errores del formulario al usuario."""
+        for field, errors in form.errors.items():
+            for error in errors:
+                if field == '__all__':
+                    messages.error(self.request, error)
+                else:
+                    label = form.fields[field].label or field
+                    messages.error(self.request, f'{label}: {error}')
+        return super().form_invalid(form)
 
     def form_valid(self, form):
         form.instance.inquilino = self.request.user
@@ -685,8 +703,24 @@ class TicketResolveView(RoleRequiredMixin, View):
 
         form = TicketResolutionForm(request.POST, instance=ticket)
         if not form.is_valid():
-            messages.error(request, 'Las notas de resolución son obligatorias.')
+            # Mostrar el primer error de validación del formulario
+            primer_error = next(
+                (e for errors in form.errors.values() for e in errors), 
+                'Las notas de resolución no son válidas.'
+            )
+            messages.error(request, primer_error)
             return redirect('ticket_detail', pk=pk)
+
+        # Evidencia obligatoria: el técnico debe cargar al menos un archivo
+        evidencias = request.FILES.getlist('evidencias')
+        if not evidencias:
+            messages.error(
+                request,
+                'Debes adjuntar al menos una fotografía o documento como '
+                'evidencia de la intervención antes de cerrar el ticket.'
+            )
+            return redirect('ticket_detail', pk=pk)
+
         form.save()
 
         for archivo in request.FILES.getlist('evidencias'):

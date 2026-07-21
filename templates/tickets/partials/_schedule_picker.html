@@ -1,95 +1,83 @@
-<!-- ── Selector de Horario por Bloques — Auto-agenda Inteligente ──────── -->
+<!-- ── Calendario de Agendamiento — Booking UI ────────────────────────── -->
 <div id="schedule-picker-panel" class="bg-white border border-zinc-200 my-6 overflow-hidden">
 
-    <!-- Accent bar — matches zinc-950 + amber-400 from site header -->
+    <!-- ═══ HEADER BAR ════════════════════════════════════════════════════ -->
     <div class="bg-zinc-950 px-6 py-4 border-b-[3px] border-amber-400">
         <div class="flex items-center gap-2.5 mb-1">
             <span class="relative flex h-2 w-2">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
             </span>
-            <p class="text-[0.65rem] font-mono tracking-[0.2em] uppercase text-amber-300/90 font-bold"
+            <p class="text-[0.65rem] tracking-[0.2em] uppercase text-amber-300/90 font-bold"
                style="font-family: 'DM Mono', monospace;">
                 Paso Final · Agendar Visita
             </p>
         </div>
-        <h3 class="text-lg font-bold tracking-tight text-white flex flex-wrap items-center gap-3"
-            style="font-family: 'Space Grotesk', sans-serif;">
-            Selecciona tu horario
-            <span class="text-[0.65rem] font-mono px-2 py-0.5 bg-amber-400/15 text-amber-300 border border-amber-400/40"
-                  style="font-family: 'DM Mono', monospace;">
-                {{ duracion_visita }} bloque{{ duracion_visita|pluralize:"s" }} · {{ ticket.get_prioridad_display }}
-            </span>
-        </h3>
-        <p class="text-xs text-zinc-400 mt-1.5" style="font-family: 'Space Grotesk', sans-serif;">
-            Técnico asignado: <strong class="text-white">{{ ticket.tecnico.get_full_name }}</strong>
-            <span class="text-zinc-600 mx-1">·</span>
-            {{ ticket.tecnico.especialidades_display|default:"Soporte Técnico" }}
-        </p>
-    </div>
-
-    <!-- Content area — light theme matching rest of detail page -->
-    <div class="p-6 sm:p-8 space-y-6">
-
-        <!-- ═══ LEYENDA ══════════════════════════════════════════════════ -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.65rem] font-bold tracking-[0.15em] uppercase text-zinc-400"
-             style="font-family: 'DM Mono', monospace;">
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 bg-emerald-100 border-2 border-emerald-500"></span>
-                Disponible
-            </span>
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 bg-red-100 border-2 border-red-400"></span>
-                Ocupado
-            </span>
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 bg-amber-50 border-2 border-amber-400"
-                      style="background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(245,158,11,0.2) 2px, rgba(245,158,11,0.2) 4px);"></span>
-                Traslado
-            </span>
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 bg-zinc-100 border-2 border-zinc-300"></span>
-                Pasado
-            </span>
-        </div>
-
-        <!-- ═══ ALERTA POSTERGACIÓN ══════════════════════════════════════ -->
-        {% if dias_postergados > 0 %}
-        <div class="bg-amber-50 border border-amber-300 p-4 flex items-start gap-3">
-            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-            </svg>
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
-                <p class="text-sm font-bold text-amber-800">Sin disponibilidad para hoy</p>
-                <p class="text-xs text-amber-700 mt-0.5">
-                    Próximo horario en
-                    <strong class="text-zinc-900 font-mono">{{ dias_postergados }} día{{ dias_postergados|pluralize:"s" }}</strong>
-                    → {{ primer_dia_disponible|date:"l d/m/Y" }}
+                <h3 class="text-lg font-bold tracking-tight text-white flex flex-wrap items-center gap-3"
+                    style="font-family: 'Space Grotesk', sans-serif;">
+                    Selecciona tu horario
+                    <span class="text-[0.65rem] font-mono px-2 py-0.5 bg-amber-400/15 text-amber-300 border border-amber-400/40"
+                          style="font-family: 'DM Mono', monospace;">
+                        {{ duracion_visita }}h · {{ ticket.get_prioridad_display }}
+                    </span>
+                </h3>
+                <p class="text-xs text-zinc-400 mt-1" style="font-family: 'Space Grotesk', sans-serif;">
+                    Técnico: <strong class="text-white">{{ ticket.tecnico.get_full_name }}</strong>
+                    <span class="text-zinc-600 mx-1">·</span>
+                    {{ ticket.tecnico.especialidades_display|default:"Soporte Técnico" }}
                 </p>
             </div>
+            <!-- Legend — compact, in header -->
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.6rem] font-bold tracking-[0.12em] uppercase text-zinc-500 shrink-0"
+                 style="font-family: 'DM Mono', monospace;">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Libre</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span> Ocupado</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-zinc-400"></span> Cerrado</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ CONTENT ═══════════════════════════════════════════════════════ -->
+    <div class="p-5 sm:p-6 space-y-5">
+
+        <!-- ── ALERTA POSTERGACIÓN ────────────────────────────────────── -->
+        {% if dias_postergados > 0 %}
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-300 text-sm">
+            <svg class="w-4 h-4 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-amber-800">
+                Sin disponibilidad hoy — próximo turno en
+                <strong class="font-mono text-zinc-900">{{ dias_postergados }}d</strong>
+                → {{ primer_dia_disponible|date:"l d/m" }}
+            </p>
         </div>
         {% endif %}
 
-        <!-- ═══ SUGERENCIA RÁPIDA ════════════════════════════════════════ -->
+        <!-- ── SUGERENCIA IA ──────────────────────────────────────────── -->
         {% if sugerencia_auto %}
-        <div class="bg-zinc-50 border border-zinc-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="space-y-1">
-                <span class="text-[0.6rem] font-bold tracking-[0.2em] uppercase px-2 py-0.5 bg-zinc-950 text-amber-300 font-mono inline-flex items-center gap-1.5"
+        <div class="relative bg-zinc-950 text-white p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 overflow-hidden">
+            <!-- Subtle diagonal accent -->
+            <div class="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-amber-400/8 to-transparent pointer-events-none"></div>
+            <div class="relative space-y-1.5">
+                <span class="text-[0.6rem] font-bold tracking-[0.2em] uppercase px-2 py-0.5 bg-amber-400 text-zinc-950 inline-flex items-center gap-1.5"
                       style="font-family: 'DM Mono', monospace;">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    Sugerencia IA
+                    Recomendado
                 </span>
-                <p class="text-sm text-zinc-600 mt-2" style="font-family: 'Space Grotesk', sans-serif;">
-                    <strong class="text-zinc-900">{{ sugerencia_auto.fecha|date:"l d/m/Y" }}</strong>
-                    <span class="text-zinc-300 mx-1">·</span>
-                    <span class="text-zinc-900 font-mono font-bold">{{ sugerencia_auto.hora_inicio|time:"H:i" }}</span>
-                    <span class="text-zinc-400 mx-0.5">→</span>
-                    <span class="text-zinc-900 font-mono font-bold">{{ sugerencia_auto.hora_fin|time:"H:i" }}</span>
+                <p class="text-sm mt-2" style="font-family: 'Space Grotesk', sans-serif;">
+                    <strong class="text-amber-300">{{ sugerencia_auto.fecha|date:"l d/m" }}</strong>
+                    <span class="text-zinc-500 mx-1.5">·</span>
+                    <span class="font-mono font-bold" style="font-family: 'DM Mono', monospace;">{{ sugerencia_auto.hora_inicio|time:"H:i" }}</span>
+                    <span class="text-zinc-500 mx-1">→</span>
+                    <span class="font-mono font-bold" style="font-family: 'DM Mono', monospace;">{{ sugerencia_auto.hora_fin|time:"H:i" }}</span>
                 </p>
             </div>
             <button type="button"
-                    onclick="agendarVisitaInquilino('{{ sugerencia_auto.fecha|date:'Y-m-d' }}', '{{ sugerencia_auto.hora_inicio|time:'H:i' }}', '{{ sugerencia_auto.hora_fin|time:'H:i' }}')"
-                    class="bg-zinc-950 hover:bg-zinc-800 text-amber-300 hover:text-amber-200 px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider transition-all border border-zinc-800 hover:border-zinc-700 shadow-sm shrink-0 flex items-center gap-2 cursor-pointer"
+                    onclick="BookingCalendar.quickBook('{{ sugerencia_auto.fecha|date:'Y-m-d' }}', '{{ sugerencia_auto.hora_inicio|time:'H:i' }}', '{{ sugerencia_auto.hora_fin|time:'H:i' }}')"
+                    class="relative bg-amber-400 hover:bg-amber-300 text-zinc-950 px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 cursor-pointer"
                     style="font-family: 'DM Mono', monospace;">
                 Agendar ahora
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -97,109 +85,93 @@
         </div>
         {% endif %}
 
-        <!-- ═══ DÍAS CON DISPONIBILIDAD ══════════════════════════════════ -->
-        <div class="space-y-4">
-            <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 border-b border-zinc-200 pb-2"
-               style="font-family: 'DM Mono', monospace;">
-                Horarios disponibles
-            </p>
+        <!-- ── CALENDAR + SLOT PANEL LAYOUT ───────────────────────────── -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start" id="booking-layout">
 
-            {% for info in dias_disponibles %}
-            <div class="border border-zinc-200 hover:border-zinc-300 transition-colors duration-200 bg-white">
+            <!-- ════ CALENDAR GRID ════════════════════════════════════════ -->
+            <div>
+                <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-zinc-400 pb-2 mb-3 border-b border-zinc-100"
+                   style="font-family: 'DM Mono', monospace;">
+                    Próximos 14 días
+                </p>
 
-                <!-- Day header -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3 bg-zinc-50 border-b border-zinc-200">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span class="text-sm font-bold text-zinc-900" style="font-family: 'Space Grotesk', sans-serif;">{{ info.dia_label }}</span>
-                        <span class="text-xs font-mono text-zinc-500" style="font-family: 'DM Mono', monospace;">{{ info.fecha|date:"d/m/Y" }}</span>
-                        {% if primer_dia_disponible and info.fecha == primer_dia_disponible and dias_postergados > 0 %}
-                        <span class="text-[0.6rem] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400 text-zinc-900"
-                              style="font-family: 'DM Mono', monospace;">← Próximo</span>
-                        {% endif %}
-                    </div>
-                    <span class="text-[0.6rem] font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 border border-zinc-200"
-                          style="font-family: 'DM Mono', monospace;">
-                        {{ info.slots_validos|length }} opción{{ info.slots_validos|length|pluralize:"es" }}
-                    </span>
+                <!-- Weekday headers -->
+                <div class="grid grid-cols-7 gap-[3px] mb-[3px]">
+                    {% for day_label in "Lun,Mar,Mié,Jue,Vie,Sáb,Dom"|make_list %}{% endfor %}
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Lun</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Mar</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Mié</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Jue</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Vie</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Sáb</div>
+                    <div class="text-center text-[0.55rem] font-bold tracking-[0.15em] uppercase text-zinc-400 py-1.5" style="font-family: 'DM Mono', monospace;">Dom</div>
                 </div>
 
-                <div class="px-5 py-4">
-                    <!-- Visual timeline — mini blocks showing the full day -->
-                    <div class="flex gap-[3px] mb-4">
-                        {% for bloque in info.bloques %}
-                        <div class="h-8 flex-1 flex items-center justify-center text-[0.55rem] font-mono transition-all duration-150
-                            {% if bloque.estado == 'libre' %}
-                                bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100
-                            {% elif bloque.estado == 'buffer' %}
-                                bg-amber-50 border border-amber-300 text-amber-700
-                            {% elif bloque.estado == 'pasado' %}
-                                bg-zinc-100 border border-zinc-200 text-zinc-400 line-through
-                            {% else %}
-                                bg-red-50 border border-red-300 text-red-600
-                            {% endif %}"
-                            {% if bloque.estado == 'buffer' %}
-                            style="background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(245,158,11,0.12) 3px, rgba(245,158,11,0.12) 6px); font-family: 'DM Mono', monospace;"
-                            {% else %}
-                            style="font-family: 'DM Mono', monospace;"
-                            {% endif %}
-                            title="{% if bloque.estado == 'libre' %}Disponible{% elif bloque.estado == 'buffer' %}Traslado (30 min){% elif bloque.estado == 'pasado' %}Hora pasada{% else %}Ocupado: {{ bloque.ticket_titulo }}{% endif %} · {{ bloque.hora_inicio|time:'H:i' }}–{{ bloque.hora_fin|time:'H:i' }}">
-                            {{ bloque.hora_inicio|time:"H:i" }}
-                        </div>
-                        {% endfor %}
-                    </div>
+                <!-- Calendar cells — rendered by JS from data -->
+                <div id="calendar-grid" class="grid grid-cols-7 gap-[3px]">
+                    <!-- JS populates this -->
+                </div>
 
-                    <!-- Botones de slots agendables -->
-                    <div class="flex flex-wrap gap-2">
-                        {% for slot in info.slots_validos %}
-                        <button type="button"
-                                onclick="agendarVisitaInquilino('{{ info.fecha|date:'Y-m-d' }}', '{{ slot.hora_inicio|time:'H:i' }}', '{{ slot.hora_fin|time:'H:i' }}')"
-                                class="group/btn relative px-4 py-2.5 text-xs font-mono bg-white border border-zinc-200 hover:border-amber-400 hover:bg-amber-50 transition-all duration-200 cursor-pointer flex items-center gap-2.5 shadow-sm hover:shadow-md"
-                                style="font-family: 'DM Mono', monospace;"
-                                title="Agendar: {{ info.dia_label }} {{ info.fecha|date:'d/m/Y' }} · {{ slot.hora_inicio|time:'H:i' }} – {{ slot.hora_fin|time:'H:i' }}">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 group-hover/btn:bg-amber-400 group-hover/btn:scale-125 transition-all duration-200"></span>
-                            <span class="font-bold text-zinc-900">
-                                {{ slot.hora_inicio|time:"H:i" }} – {{ slot.hora_fin|time:"H:i" }}
-                            </span>
-                            <span class="text-[0.55rem] uppercase tracking-wider px-1.5 py-0.5 bg-zinc-950 text-amber-300 group-hover/btn:bg-amber-400 group-hover/btn:text-zinc-900 font-bold transition-colors">
-                                Agendar →
-                            </span>
-                        </button>
-                        {% endfor %}
+                <!-- No-availability fallback (shown/hidden by JS) -->
+                <div id="calendar-empty" class="hidden py-10 text-center border border-dashed border-zinc-300 bg-zinc-50 mt-4">
+                    <svg class="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-sm font-medium text-zinc-500 mb-1" style="font-family: 'Space Grotesk', sans-serif;">Sin disponibilidad en los próximos 14 días</p>
+                    <p class="text-xs text-zinc-400">Usa el chat para coordinar un horario con el administrador.</p>
+                </div>
+            </div>
+
+            <!-- ════ SLOT PANEL (right side) ══════════════════════════════ -->
+            <div id="slot-panel" class="hidden lg:min-h-[320px]">
+                <div class="border border-zinc-200 bg-white h-full">
+                    <!-- Panel header -->
+                    <div id="slot-panel-header" class="bg-zinc-50 border-b border-zinc-200 px-4 py-3">
+                        <!-- JS populates: day name + date + slot count -->
+                    </div>
+                    <!-- Timeline -->
+                    <div id="slot-panel-timeline" class="px-4 py-3 border-b border-zinc-100">
+                        <!-- JS populates: horizontal block bar -->
+                    </div>
+                    <!-- Slot buttons -->
+                    <div id="slot-panel-slots" class="p-4 space-y-2 max-h-[280px] overflow-y-auto">
+                        <!-- JS populates: slot buttons -->
                     </div>
                 </div>
             </div>
-            {% empty %}
-            <div class="py-10 text-center border border-dashed border-zinc-300 bg-zinc-50">
-                <svg class="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <p class="text-sm font-medium text-zinc-500 mb-1" style="font-family: 'Space Grotesk', sans-serif;">Sin disponibilidad en los próximos 14 días</p>
-                <p class="text-xs text-zinc-400">Usa el chat para coordinar un horario alternativo con el administrador.</p>
+
+            <!-- Placeholder shown before any day is selected -->
+            <div id="slot-panel-placeholder" class="flex items-center justify-center lg:min-h-[320px] border border-dashed border-zinc-200 bg-zinc-50/50">
+                <div class="text-center py-10 px-6">
+                    <svg class="w-8 h-8 text-zinc-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-xs font-bold tracking-[0.15em] uppercase text-zinc-400 mb-1" style="font-family: 'DM Mono', monospace;">Selecciona un día</p>
+                    <p class="text-xs text-zinc-400" style="font-family: 'Space Grotesk', sans-serif;">Haz clic en un día verde del calendario para ver los horarios disponibles</p>
+                </div>
             </div>
-            {% endfor %}
+
         </div>
 
-        <!-- ═══ DÍAS SIN DISPONIBILIDAD ══════════════════════════════════ -->
+        <!-- ── DÍAS SIN DISPONIBILIDAD (collapsible) ─────────────────── -->
         {% if dias_ocupados %}
         <details class="group">
-            <summary class="text-[0.65rem] font-mono uppercase tracking-[0.2em] text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors flex items-center gap-2 select-none py-2"
+            <summary class="text-[0.65rem] uppercase tracking-[0.2em] text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors flex items-center gap-2 select-none py-2"
                      style="font-family: 'DM Mono', monospace;">
                 <svg class="w-3 h-3 transition-transform group-open:rotate-90 text-zinc-400" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
                 </svg>
                 Días sin disponibilidad ({{ dias_ocupados|length }})
             </summary>
-            <div class="mt-2 space-y-1.5">
+            <div class="mt-2 space-y-1">
                 {% for info in dias_ocupados %}
-                <div class="bg-zinc-50 border border-zinc-200 px-4 py-2.5 flex items-center justify-between opacity-60">
+                <div class="bg-zinc-50 border border-zinc-200 px-4 py-2 flex items-center justify-between opacity-60">
                     <div class="flex items-center gap-2">
                         <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
                         <span class="text-xs font-medium text-zinc-500" style="font-family: 'Space Grotesk', sans-serif;">{{ info.dia_label }}</span>
-                        <span class="text-xs font-mono text-zinc-400" style="font-family: 'DM Mono', monospace;">{{ info.fecha|date:"d/m/Y" }}</span>
+                        <span class="text-xs text-zinc-400" style="font-family: 'DM Mono', monospace;">{{ info.fecha|date:"d/m" }}</span>
                     </div>
-                    <span class="text-[0.6rem] font-mono text-zinc-500 bg-white px-2 py-0.5 border border-zinc-200"
-                          style="font-family: 'DM Mono', monospace;">
+                    <span class="text-[0.6rem] text-zinc-500 bg-white px-2 py-0.5 border border-zinc-200" style="font-family: 'DM Mono', monospace;">
                         {{ info.razon }}
                     </span>
                 </div>
@@ -208,7 +180,63 @@
         </details>
         {% endif %}
 
-        <!-- ═══ FORMULARIO OCULTO ════════════════════════════════════════ -->
+        <!-- ═══ INLINE CONFIRMATION MODAL ═════════════════════════════════ -->
+        <div id="booking-confirm-overlay"
+             class="fixed inset-0 z-50 hidden items-center justify-center bg-zinc-950/60 backdrop-blur-sm"
+             style="display: none;">
+            <div id="booking-confirm-modal"
+                 class="bg-white w-full max-w-md mx-4 border border-zinc-200 shadow-2xl transform scale-95 opacity-0 transition-all duration-200">
+                <!-- Top accent -->
+                <div class="h-1 bg-amber-400"></div>
+                <div class="p-6 space-y-4">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-[0.6rem] font-bold tracking-[0.2em] uppercase text-amber-600 mb-1" style="font-family: 'DM Mono', monospace;">Confirmar Visita</p>
+                            <h4 class="text-lg font-bold text-zinc-900" style="font-family: 'Space Grotesk', sans-serif;" id="confirm-title">—</h4>
+                        </div>
+                        <button type="button" onclick="BookingCalendar.closeConfirm()"
+                                class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="bg-zinc-50 border border-zinc-200 p-4 space-y-2">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="text-sm font-medium text-zinc-900" id="confirm-date" style="font-family: 'Space Grotesk', sans-serif;">—</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="text-sm font-bold text-zinc-900" id="confirm-time" style="font-family: 'DM Mono', monospace;">—</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="text-sm text-zinc-600" style="font-family: 'Space Grotesk', sans-serif;">{{ ticket.tecnico.get_full_name }}</span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-zinc-500 leading-relaxed">
+                        Al confirmar, el ticket quedará asignado en firme y el técnico será notificado.
+                    </p>
+
+                    <div class="flex gap-3 pt-1">
+                        <button type="button" onclick="BookingCalendar.closeConfirm()"
+                                class="flex-1 py-2.5 text-xs font-bold uppercase tracking-widest border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors cursor-pointer"
+                                style="font-family: 'DM Mono', monospace;">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="BookingCalendar.submitBooking()" id="confirm-submit-btn"
+                                class="flex-1 py-2.5 text-xs font-bold uppercase tracking-widest bg-zinc-950 text-amber-300 hover:bg-zinc-800 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                                style="font-family: 'DM Mono', monospace;">
+                            Confirmar
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ HIDDEN FORM ═══════════════════════════════════════════════ -->
         <form id="inquilino-schedule-form" method="POST" action="{% url 'ticket_schedule' ticket.pk %}" class="hidden">
             {% csrf_token %}
             <input type="hidden" name="fecha_programada" id="inquilino_fecha">
@@ -218,38 +246,589 @@
     </div>
 </div>
 
+<!-- ═══ INLINE STYLES ═════════════════════════════════════════════════════ -->
+<style>
+    /* Calendar cell base */
+    .cal-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.25rem;
+        min-height: 4.5rem;
+        border: 1px solid #e4e4e7; /* zinc-200 */
+        background: #fff;
+        cursor: default;
+        transition: all 0.15s ease;
+        font-family: 'Space Grotesk', sans-serif;
+    }
+    .cal-cell--empty {
+        background: #fafafa;
+        border-color: #f4f4f5;
+    }
+    .cal-cell--available {
+        cursor: pointer;
+        border-color: #d4d4d8;
+    }
+    .cal-cell--available:hover {
+        border-color: #fbbf24;
+        background: #fffbeb;
+        box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+        transform: translateY(-1px);
+    }
+    .cal-cell--unavailable {
+        background: #fafafa;
+        border-color: #e4e4e7;
+        opacity: 0.5;
+    }
+    .cal-cell--unavailable .cal-day-num {
+        text-decoration: line-through;
+        color: #a1a1aa;
+    }
+    .cal-cell--selected {
+        border-color: #fbbf24 !important;
+        background: #fef3c7 !important;
+        box-shadow: inset 0 0 0 2px #f59e0b, 0 2px 8px rgba(251, 191, 36, 0.2);
+        transform: translateY(-1px);
+    }
+    .cal-cell--today {
+        border-color: #a1a1aa;
+    }
+    .cal-cell--today::before {
+        content: '';
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #18181b;
+    }
+    .cal-day-num {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #18181b;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+    .cal-day-name {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.55rem;
+        font-weight: 500;
+        color: #a1a1aa;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 2px;
+    }
+    .cal-month-tag {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: #f59e0b;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 2px;
+    }
+
+    /* Dot indicators */
+    .cal-dots {
+        display: flex;
+        gap: 3px;
+        margin-top: 5px;
+        justify-content: center;
+        align-items: center;
+        height: 8px;
+    }
+    .cal-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #10b981; /* emerald-500 */
+        transition: transform 0.15s ease;
+    }
+    .cal-cell--available:hover .cal-dot {
+        transform: scale(1.3);
+    }
+    .cal-cell--selected .cal-dot {
+        background: #f59e0b;
+    }
+    .cal-dot-plus {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: #10b981;
+        line-height: 1;
+    }
+    .cal-cell--selected .cal-dot-plus {
+        color: #f59e0b;
+    }
+
+    /* Slot panel timeline block */
+    .timeline-block {
+        height: 1.75rem;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.55rem;
+        font-weight: 500;
+        transition: all 0.12s ease;
+    }
+    .timeline-block--libre {
+        background: #ecfdf5;
+        border: 1px solid #6ee7b7;
+        color: #047857;
+    }
+    .timeline-block--ocupado {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        color: #dc2626;
+    }
+    .timeline-block--buffer {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        color: #b45309;
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(245,158,11,0.08) 3px, rgba(245,158,11,0.08) 6px);
+    }
+    .timeline-block--pasado {
+        background: #f4f4f5;
+        border: 1px solid #e4e4e7;
+        color: #a1a1aa;
+        text-decoration: line-through;
+    }
+
+    /* Slot button */
+    .slot-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: 'DM Mono', monospace;
+    }
+    .slot-btn:hover {
+        border-color: #fbbf24;
+        background: #fffbeb;
+        box-shadow: 0 2px 8px rgba(251, 191, 36, 0.12);
+    }
+    .slot-btn:hover .slot-btn-badge {
+        background: #fbbf24;
+        color: #18181b;
+    }
+    .slot-btn-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #10b981;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+    .slot-btn:hover .slot-btn-dot {
+        background: #fbbf24;
+        transform: scale(1.25);
+    }
+    .slot-btn-time {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #18181b;
+        flex: 1;
+    }
+    .slot-btn-badge {
+        font-size: 0.55rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.2rem 0.5rem;
+        background: #18181b;
+        color: #fbbf24;
+        transition: all 0.15s ease;
+    }
+
+    /* Confirm modal animation */
+    .confirm-enter {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+    }
+
+    /* Responsive: on mobile, slot panel goes below */
+    @media (max-width: 1023px) {
+        #slot-panel {
+            order: 2;
+        }
+    }
+</style>
+
+<!-- ═══ JAVASCRIPT ═════════════════════════════════════════════════════════ -->
 <script>
-    function agendarVisitaInquilino(fecha, horaInicio, horaFin) {
-        const fechaObj = new Date(fecha + 'T00:00:00');
-        const fechaLegible = fechaObj.toLocaleDateString('es-MX', {
+(function() {
+    'use strict';
+
+    // ── Data from Django template ──────────────────────────────────────
+    const CALENDAR_DATA = {
+        disponibles: [
+            {% for info in dias_disponibles %}
+            {
+                fecha: '{{ info.fecha|date:"Y-m-d" }}',
+                diaLabel: '{{ info.dia_label }}',
+                diaLabelShort: '{{ info.dia_label_short }}',
+                bloques: [
+                    {% for bloque in info.bloques %}
+                    {
+                        horaInicio: '{{ bloque.hora_inicio|time:"H:i" }}',
+                        horaFin: '{{ bloque.hora_fin|time:"H:i" }}',
+                        estado: '{{ bloque.estado }}',
+                        ticketId: {% if bloque.ticket_id %}{{ bloque.ticket_id }}{% else %}null{% endif %},
+                        ticketTitulo: '{{ bloque.ticket_titulo|escapejs }}'
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                slotsValidos: [
+                    {% for slot in info.slots_validos %}
+                    {
+                        horaInicio: '{{ slot.hora_inicio|time:"H:i" }}',
+                        horaFin: '{{ slot.hora_fin|time:"H:i" }}'
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        ocupados: [
+            {% for info in dias_ocupados %}
+            {
+                fecha: '{{ info.fecha|date:"Y-m-d" }}',
+                diaLabel: '{{ info.dia_label }}',
+                diaLabelShort: '{{ info.dia_label_short }}',
+                razon: '{{ info.razon|escapejs }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        duracionVisita: {{ duracion_visita }},
+    };
+
+    // ── State ──────────────────────────────────────────────────────────
+    let selectedDate = null;
+    let pendingBooking = null; // { fecha, horaInicio, horaFin }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+    const MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const DIAS_SEMANA_SHORT = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    function parseDate(str) {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    function isToday(dateStr) {
+        const today = new Date();
+        const d = parseDate(dateStr);
+        return d.getFullYear() === today.getFullYear() &&
+               d.getMonth() === today.getMonth() &&
+               d.getDate() === today.getDate();
+    }
+
+    function formatDateLong(dateStr) {
+        const d = parseDate(dateStr);
+        return d.toLocaleDateString('es-MX', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
         });
+    }
 
-        const bloques = Math.round(
-            (new Date('1970-01-01T' + horaFin) - new Date('1970-01-01T' + horaInicio)) / 3600000
-        );
+    // Build a unified day map: fecha → { type: 'available'|'unavailable', data }
+    function buildDayMap() {
+        const map = {};
+        CALENDAR_DATA.disponibles.forEach(d => {
+            map[d.fecha] = { type: 'available', data: d };
+        });
+        CALENDAR_DATA.ocupados.forEach(d => {
+            map[d.fecha] = { type: 'unavailable', data: d };
+        });
+        return map;
+    }
 
-        if (!confirm(
-            `¿Confirmas la visita?\n\n` +
-            `📅 ${fechaLegible}\n` +
-            `🕐 ${horaInicio} → ${horaFin} (${bloques} bloque${bloques > 1 ? 's' : ''} de 1h)\n\n` +
-            `El ticket quedará asignado en firme.`
-        )) {
+    // ── Render Calendar Grid ──────────────────────────────────────────
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const emptyMsg = document.getElementById('calendar-empty');
+        const dayMap = buildDayMap();
+
+        // Collect all dates in order
+        const allDates = [
+            ...CALENDAR_DATA.disponibles.map(d => d.fecha),
+            ...CALENDAR_DATA.ocupados.map(d => d.fecha)
+        ].sort();
+
+        if (allDates.length === 0) {
+            emptyMsg.classList.remove('hidden');
             return;
         }
 
-        document.getElementById('inquilino_fecha').value = fecha;
-        document.getElementById('inquilino_inicio').value = horaInicio;
-        document.getElementById('inquilino_fin').value = horaFin;
+        const firstDate = parseDate(allDates[0]);
+        const lastDate = parseDate(allDates[allDates.length - 1]);
 
-        // Feedback visual
-        if (event && event.currentTarget) {
-            const btn = event.currentTarget;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="animate-pulse font-bold text-zinc-500">Agendando…</span>';
-            btn.classList.add('opacity-75', 'pointer-events-none', 'bg-zinc-100');
+        // Pad start to Monday (weekday 1)
+        let startDow = firstDate.getDay(); // 0=Sun
+        startDow = startDow === 0 ? 6 : startDow - 1; // convert to 0=Mon
+
+        // Build cells array
+        const cells = [];
+
+        // Empty leading cells
+        for (let i = 0; i < startDow; i++) {
+            cells.push({ type: 'empty' });
         }
 
+        // Day cells
+        const cursor = new Date(firstDate);
+        while (cursor <= lastDate) {
+            const key = cursor.toISOString().slice(0, 10);
+            const pad = (n) => String(n).padStart(2, '0');
+            const keyFixed = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`;
+
+            if (dayMap[keyFixed]) {
+                cells.push({
+                    type: dayMap[keyFixed].type,
+                    fecha: keyFixed,
+                    data: dayMap[keyFixed].data,
+                    day: cursor.getDate(),
+                    month: cursor.getMonth(),
+                    isFirstOfMonth: cursor.getDate() === 1 || keyFixed === allDates[0]
+                });
+            } else {
+                cells.push({
+                    type: 'gap',
+                    day: cursor.getDate(),
+                    month: cursor.getMonth(),
+                    fecha: keyFixed,
+                    isFirstOfMonth: cursor.getDate() === 1
+                });
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        // Render
+        grid.innerHTML = '';
+        cells.forEach(cell => {
+            const el = document.createElement('div');
+            el.className = 'cal-cell';
+
+            if (cell.type === 'empty') {
+                el.classList.add('cal-cell--empty');
+                el.innerHTML = '';
+            } else if (cell.type === 'gap') {
+                el.classList.add('cal-cell--unavailable');
+                el.innerHTML = `
+                    <span class="cal-day-num">${cell.day}</span>
+                    ${cell.isFirstOfMonth ? `<span class="cal-month-tag">${MESES_SHORT[cell.month]}</span>` : ''}
+                `;
+            } else if (cell.type === 'unavailable') {
+                el.classList.add('cal-cell--unavailable');
+                el.title = cell.data.razon || 'Sin disponibilidad';
+                el.innerHTML = `
+                    <span class="cal-day-num">${cell.day}</span>
+                    ${cell.isFirstOfMonth ? `<span class="cal-month-tag">${MESES_SHORT[cell.month]}</span>` : ''}
+                    <div class="cal-dots"><span style="width:5px;height:5px;border-radius:50%;background:#d4d4d8;"></span></div>
+                `;
+            } else if (cell.type === 'available') {
+                el.classList.add('cal-cell--available');
+                if (isToday(cell.fecha)) el.classList.add('cal-cell--today');
+
+                const slotCount = cell.data.slotsValidos.length;
+                const dotsToShow = Math.min(slotCount, 4);
+                let dotsHtml = '';
+                for (let i = 0; i < dotsToShow; i++) {
+                    dotsHtml += '<span class="cal-dot"></span>';
+                }
+                if (slotCount > 4) {
+                    dotsHtml += `<span class="cal-dot-plus">+${slotCount - 4}</span>`;
+                }
+
+                el.innerHTML = `
+                    <span class="cal-day-num">${cell.day}</span>
+                    ${cell.isFirstOfMonth ? `<span class="cal-month-tag">${MESES_SHORT[cell.month]}</span>` : ''}
+                    <div class="cal-dots">${dotsHtml}</div>
+                `;
+                el.title = `${cell.data.diaLabel} — ${slotCount} horario${slotCount > 1 ? 's' : ''} disponible${slotCount > 1 ? 's' : ''}`;
+                el.dataset.fecha = cell.fecha;
+                el.addEventListener('click', () => selectDay(cell.fecha));
+            }
+
+            grid.appendChild(el);
+        });
+
+        // Auto-select first available day
+        if (CALENDAR_DATA.disponibles.length > 0) {
+            selectDay(CALENDAR_DATA.disponibles[0].fecha);
+        }
+    }
+
+    // ── Select Day → Show Slot Panel ──────────────────────────────────
+    function selectDay(fecha) {
+        selectedDate = fecha;
+
+        // Update calendar selection visual
+        document.querySelectorAll('.cal-cell--selected').forEach(el => {
+            el.classList.remove('cal-cell--selected');
+        });
+        const cell = document.querySelector(`.cal-cell[data-fecha="${fecha}"]`);
+        if (cell) cell.classList.add('cal-cell--selected');
+
+        // Find day data
+        const dayData = CALENDAR_DATA.disponibles.find(d => d.fecha === fecha);
+        if (!dayData) return;
+
+        // Show slot panel, hide placeholder
+        document.getElementById('slot-panel').classList.remove('hidden');
+        document.getElementById('slot-panel-placeholder').classList.add('hidden');
+
+        renderSlotPanel(dayData);
+    }
+
+    function renderSlotPanel(dayData) {
+        // ── Header
+        const header = document.getElementById('slot-panel-header');
+        header.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-sm font-bold text-zinc-900" style="font-family: 'Space Grotesk', sans-serif;">${dayData.diaLabel}</span>
+                    <span class="text-xs text-zinc-500" style="font-family: 'DM Mono', monospace;">${formatShortDate(dayData.fecha)}</span>
+                </div>
+                <span class="text-[0.6rem] font-bold text-zinc-500 bg-zinc-100 px-2 py-0.5 border border-zinc-200" style="font-family: 'DM Mono', monospace;">
+                    ${dayData.slotsValidos.length} turno${dayData.slotsValidos.length > 1 ? 's' : ''}
+                </span>
+            </div>
+        `;
+
+        // ── Timeline
+        const timeline = document.getElementById('slot-panel-timeline');
+        let timelineHtml = '<div class="flex gap-[2px]">';
+        dayData.bloques.forEach(b => {
+            const cls = `timeline-block timeline-block--${b.estado}`;
+            let title = '';
+            if (b.estado === 'libre') title = `Disponible · ${b.horaInicio}–${b.horaFin}`;
+            else if (b.estado === 'ocupado') title = `Ocupado: ${b.ticketTitulo} · ${b.horaInicio}–${b.horaFin}`;
+            else if (b.estado === 'buffer') title = `Traslado · ${b.horaInicio}–${b.horaFin}`;
+            else if (b.estado === 'pasado') title = `Pasado · ${b.horaInicio}–${b.horaFin}`;
+            timelineHtml += `<div class="${cls}" title="${title}">${b.horaInicio}</div>`;
+        });
+        timelineHtml += '</div>';
+        timeline.innerHTML = timelineHtml;
+
+        // ── Slot Buttons
+        const slotsContainer = document.getElementById('slot-panel-slots');
+        if (dayData.slotsValidos.length === 0) {
+            slotsContainer.innerHTML = '<p class="text-xs text-zinc-400 py-4 text-center">Sin turnos disponibles</p>';
+            return;
+        }
+
+        let slotsHtml = '';
+        dayData.slotsValidos.forEach(slot => {
+            const duracion = computeHours(slot.horaInicio, slot.horaFin);
+            slotsHtml += `
+                <button type="button" class="slot-btn"
+                        onclick="BookingCalendar.openConfirm('${dayData.fecha}', '${slot.horaInicio}', '${slot.horaFin}')"
+                        title="Agendar: ${dayData.diaLabel} ${formatShortDate(dayData.fecha)} · ${slot.horaInicio} – ${slot.horaFin}">
+                    <span class="slot-btn-dot"></span>
+                    <span class="slot-btn-time">${slot.horaInicio} — ${slot.horaFin}</span>
+                    <span style="font-size:0.55rem;color:#71717a;font-family:'DM Mono',monospace;">${duracion}h</span>
+                    <span class="slot-btn-badge">Agendar →</span>
+                </button>
+            `;
+        });
+        slotsContainer.innerHTML = slotsHtml;
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+    function formatShortDate(dateStr) {
+        const d = parseDate(dateStr);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+    }
+
+    function computeHours(start, end) {
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        return Math.round(((eh * 60 + em) - (sh * 60 + sm)) / 60);
+    }
+
+    // ── Confirmation Flow ─────────────────────────────────────────────
+    function openConfirm(fecha, horaInicio, horaFin) {
+        pendingBooking = { fecha, horaInicio, horaFin };
+
+        const duracion = computeHours(horaInicio, horaFin);
+
+        document.getElementById('confirm-title').textContent =
+            `${horaInicio} → ${horaFin}`;
+        document.getElementById('confirm-date').textContent =
+            formatDateLong(fecha);
+        document.getElementById('confirm-time').textContent =
+            `${horaInicio} — ${horaFin} (${duracion}h)`;
+
+        // Show overlay
+        const overlay = document.getElementById('booking-confirm-overlay');
+        const modal = document.getElementById('booking-confirm-modal');
+        overlay.style.display = 'flex';
+        overlay.classList.remove('hidden');
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            modal.classList.add('confirm-enter');
+        });
+
+        // Close on overlay click (not modal)
+        overlay.addEventListener('click', function handler(e) {
+            if (e.target === overlay) {
+                closeConfirm();
+                overlay.removeEventListener('click', handler);
+            }
+        });
+    }
+
+    function closeConfirm() {
+        const overlay = document.getElementById('booking-confirm-overlay');
+        const modal = document.getElementById('booking-confirm-modal');
+        modal.classList.remove('confirm-enter');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+        }, 150);
+        pendingBooking = null;
+    }
+
+    function submitBooking() {
+        if (!pendingBooking) return;
+
+        const btn = document.getElementById('confirm-submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-pulse">Agendando…</span>';
+        btn.classList.add('opacity-75', 'pointer-events-none');
+
+        document.getElementById('inquilino_fecha').value = pendingBooking.fecha;
+        document.getElementById('inquilino_inicio').value = pendingBooking.horaInicio;
+        document.getElementById('inquilino_fin').value = pendingBooking.horaFin;
         document.getElementById('inquilino-schedule-form').submit();
     }
+
+    function quickBook(fecha, horaInicio, horaFin) {
+        openConfirm(fecha, horaInicio, horaFin);
+    }
+
+    // ── Public API (for onclick handlers) ─────────────────────────────
+    window.BookingCalendar = {
+        openConfirm,
+        closeConfirm,
+        submitBooking,
+        quickBook,
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', renderCalendar);
+})();
 </script>

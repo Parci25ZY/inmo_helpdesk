@@ -1,0 +1,375 @@
+/* ==========================================================================
+   INMOHELPDESK — RESPONSIVE ENHANCEMENTS & FLOATING TAB BAR
+   Optimización específica para dispositivos Móviles (Mobile) y Tablet (Tablet),
+   preservando el 100% del diseño y comportamiento en la versión Web Desktop.
+   ========================================================================== */
+
+/* ── 1. LIMPIEZA DE HEADER Y ESPACIADO EN MOBILE / TABLET (< 1200px) ───── */
+@media (max-width: 1199px) {
+    /* Ocultar categóricamente todos los módulos/enlaces en el nav superior ya que
+       están accesibles desde la Floating Tab Bar inferior */
+    .desktop-only-nav {
+        display: none !important;
+    }
+
+    /* Evita que el último elemento (paginador, botones o tabla) quede oculto
+       detrás de la Floating Tab Bar en móviles y tablets. */
+    main {
+        padding-bottom: 6.5rem !important;
+    }
+
+    /* El header en móvil y tablet queda limpio en 1 sola línea: Logo y Notif/Salir */
+    header {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Ocultar subtítulos largos y metadatos secundarios debajo del título del logo en móvil/tablet */
+    header p {
+        display: none !important;
+    }
+
+    /* Asegurar que el título principal no desborde ni empuje los iconos en móvil */
+    header h1 {
+        font-size: 1.05rem !important;
+        line-height: 1.25 !important;
+        margin: 0 !important;
+    }
+}
+
+
+/* ── 2. FLOATING TAB BAR (DOCK INFERIOR) ───────────────────────────────── */
+.floating-tab-bar {
+    position: fixed;
+    z-index: 60;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.875rem;
+    background: rgba(9, 9, 11, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.85),
+                0 0 0 1px rgba(251, 191, 36, 0.15);
+    padding: 0.4rem 0.5rem;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.25s ease,
+                bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+}
+
+/* ADAPTACIÓN TABLET (FLOATING DOCK / ISLA CENTRADA) */
+@media (min-width: 640px) and (max-width: 1199px) {
+    .floating-tab-bar {
+        max-width: 29rem;
+        margin-left: auto;
+        margin-right: auto;
+        left: 0;
+        right: 0;
+        bottom: 1.25rem;
+        border-radius: 9999px;
+        padding: 0.45rem 1rem;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9),
+                    0 0 20px -5px rgba(251, 191, 36, 0.25);
+    }
+}
+
+/* Oculto en versión Web Desktop (>1200px) donde opera el nav superior */
+@media (min-width: 1200px) {
+    .floating-tab-bar,
+    .floating-admin-popup {
+        display: none !important;
+    }
+}
+
+/* ESTADO DE OCULTAMIENTO INTELIGENTE (AUTO-HIDE) */
+.tab-bar--hidden {
+    transform: translateY(170%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* INTERIOR Y BOTONES DE LA TAB BAR */
+.floating-tab-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.25rem;
+}
+
+.floating-tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 3.5rem;
+    min-height: 2.85rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.875rem;
+    color: #a1a1aa;
+    text-decoration: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    user-select: none;
+}
+
+@media (min-width: 640px) and (max-width: 1199px) {
+    .floating-tab-btn {
+        flex-direction: row;
+        gap: 0.4rem;
+        font-size: 0.68rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 9999px;
+    }
+}
+
+.floating-tab-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.floating-tab-btn:active {
+    transform: scale(0.94);
+}
+
+.floating-tab-btn.is-active {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.floating-tab-btn.is-active svg {
+    color: #fbbf24;
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.4));
+}
+
+/* Botón Destacado de Asistente IA dentro de la Tab Bar */
+.floating-tab-btn--ai {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.05));
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fde68a;
+}
+
+.floating-tab-btn--ai:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #09090b !important;
+    border-color: #fbbf24;
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+}
+
+.floating-tab-btn--ai svg {
+    color: #fbbf24;
+}
+
+.floating-tab-btn--ai:hover svg {
+    color: #09090b !important;
+}
+
+/* ── 3. MENÚ FLOTANTE PARA ADMINISTRADORES (POPUP) INFERIOR ────────────── */
+.floating-admin-popup {
+    position: fixed;
+    z-index: 59;
+    left: 1rem;
+    right: 1rem;
+    bottom: 5.25rem;
+    background: #0d0e12;
+    border: 1px solid #27272a;
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.85);
+    padding: 0.5rem;
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+@media (min-width: 640px) and (max-width: 1199px) {
+    .floating-admin-popup {
+        max-width: 22rem;
+        margin-left: auto;
+        margin-right: auto;
+        left: 0;
+        right: 0;
+        bottom: 5.75rem;
+    }
+}
+
+.floating-admin-popup.is-open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.floating-admin-popup__title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 0.5rem 0.75rem 0.35rem;
+    border-bottom: 1px solid #27272a;
+    margin-bottom: 0.35rem;
+}
+
+.floating-admin-popup__item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    color: #e4e4e7;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    transition: background-color 0.15s;
+}
+
+.floating-admin-popup__item:hover {
+    background: #1f1f23;
+    color: #fbbf24;
+}
+
+.floating-admin-popup__item svg {
+    color: #a1a1aa;
+    transition: color 0.15s;
+}
+
+.floating-admin-popup__item:hover svg {
+    color: #fbbf24;
+}
+
+/* ── 4. MEJORAS AL FAB DEL ASISTENTE DE IA EN MOBILE & TABLET ──────────── */
+@media (max-width: 1199px) {
+    .chatbot-fab {
+        bottom: 5.5rem !important;
+        right: 1.25rem !important;
+        border-radius: 9999px !important;
+        padding: 0.65rem 1.15rem !important;
+        background: linear-gradient(135deg, #18181b, #09090b) !important;
+        border: 1.5px solid rgba(251, 191, 36, 0.6) !important;
+        box-shadow: 0 10px 25px -5px rgba(251, 191, 36, 0.3),
+                    0 4px 12px rgba(0, 0, 0, 0.6) !important;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                    bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                    opacity 0.25s ease,
+                    box-shadow 0.25s ease !important;
+    }
+
+    @media (min-width: 640px) {
+        .chatbot-fab {
+            bottom: 6rem !important;
+            right: 2rem !important;
+            padding: 0.75rem 1.35rem !important;
+            font-size: 0.72rem !important;
+        }
+    }
+
+    /* Cuando la Tab Bar se oculta (al escribir o scroll), el FAB baja suavemente */
+    .chatbot-fab.fab--lowered {
+        bottom: 1.25rem !important;
+    }
+
+    /* Cuando el FAB es presionado en móvil/tablet */
+    .chatbot-fab:active {
+        transform: scale(0.95) !important;
+    }
+}
+
+/* ── 5. ESTILO DE DISEÑO ADAPTADO A TABLETS (TABLET VERSION POLISH) ────── */
+@media (min-width: 640px) and (max-width: 1199px) {
+    /* Grids operativas e información en Tablet: equilibradas en 2 columnas
+       en lugar de colapsar a 1 o estirarse en exceso a 4 */
+    .tablet-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+
+    /* Tarjetas de tickets o KPIs con más respiro en orientación tablet */
+    .tablet-card {
+        padding: 1.5rem !important;
+        border-radius: 1.25rem !important;
+    }
+
+    /* Mejor accesibilidad táctil para botones e inputs en Tablet */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    select,
+    textarea {
+        font-size: 0.9375rem !important; /* >= 15px previene fatiga en iPad */
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+    }
+
+    /* El header en tablet muestra el título y rol de manera limpia sin desborde */
+    header h1 {
+        font-size: 1.25rem !important;
+    }
+}
+
+/* ── 6. CORRECCIONES TÁCTILES Y ANTI-ZOOM EN DISPOSITIVOS MÓVILES ──────── */
+@media (max-width: 639px) {
+    /* En iPhone/Safari, inputs con font-size < 16px hacen auto-zoom. Aseguramos 16px */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+
+    /* Tablas en móvil con desplazamiento horizontal suave e indicador visual */
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .overflow-x-auto::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* ── 7. PANEL DE NOTIFICACIONES ADAPTADO A MÓVIL Y TABLET (BOTTOM SHEET) ── */
+@media (max-width: 1199px) {
+    #notif-dropdown {
+        position: fixed !important;
+        left: 0.75rem !important;
+        right: 0.75rem !important;
+        bottom: 5.25rem !important;
+        top: auto !important;
+        margin: 0 auto !important;
+        max-width: 28rem !important;
+        width: auto !important;
+        border-radius: 1.5rem !important;
+        background: rgba(9, 9, 11, 0.96) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95),
+                    0 0 0 1px rgba(251, 191, 36, 0.25) !important;
+        z-index: 70 !important;
+        transform-origin: bottom center !important;
+    }
+
+    @media (min-width: 640px) {
+        #notif-dropdown {
+            bottom: 5.75rem !important;
+            max-width: 26rem !important;
+        }
+    }
+
+    #notif-dropdown .notif-scrollbar {
+        max-height: 52vh !important;
+    }
+}
+

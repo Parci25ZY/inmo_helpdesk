@@ -1,107 +1,82 @@
-"""Notificaciones de tickets hacia sistemas externos (n8n)."""
+"""Notificaciones nativas de tickets por correo electrónico mediante Celery."""
 
 import logging
-
-import requests
 from celery import shared_task
 from django.conf import settings
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=10)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def notify_nuevo_ticket(self, ticket_id: int) -> bool:
-    """Envía un webhook a n8n cuando un inquilino crea un ticket.
-
-    n8n recibe el payload y envía el correo de alerta al administrador.
-    Se ejecuta como task Celery para no bloquear la respuesta al usuario.
-    Si n8n no está disponible, registra el fallo en el log y continúa
-    sin interrumpir el flujo del usuario.
-    """
-    webhook_url = getattr(settings, 'N8N_WEBHOOK_URL', '').strip()
-    if not webhook_url:
-        return False
-
+    """Envía un correo directo al administrador cuando se crea un ticket."""
     from apps.tickets.models import Ticket
     try:
         ticket = Ticket.objects.select_related(
             'inquilino', 'unidad', 'unidad__edificio',
         ).get(pk=ticket_id)
     except Ticket.DoesNotExist:
-        logger.warning("Ticket %d no encontrado para notificación n8n.", ticket_id)
+        logger.warning("Ticket %d no encontrado para notificación por correo.", ticket_id)
         return False
 
-    payload = {
-        'ticket_id': ticket.pk,
-        'codigo': ticket.codigo,
-        'titulo': ticket.titulo,
-        'descripcion': ticket.descripcion[:400],
-        'prioridad': ticket.get_prioridad_display(),
-        'inquilino_nombre': ticket.inquilino.get_full_name(),
-        'inquilino_email': ticket.inquilino.email,
-        'unidad': (
-            f"{ticket.unidad.edificio.nombre} · "
-            f"Unidad #{ticket.unidad.numero} · "
-            f"Piso {ticket.unidad.piso}"
-        ),
-        'url_ticket': f"{settings.SITE_URL}/tickets/{ticket.pk}/",
-    }
+    asunto = f"Nuevo Ticket Creado: {ticket.codigo}"
+    mensaje = (
+        f"Hola Administrador,\n\n"
+        f"Se ha registrado un nuevo reporte de soporte:\n\n"
+        f"Código: {ticket.codigo}\n"
+        f"Título: {ticket.titulo}\n"
+        f"Prioridad: {ticket.get_prioridad_display()}\n"
+        f"Inquilino: {ticket.inquilino.get_full_name()}\n"
+        f"Unidad: {ticket.unidad.edificio.nombre} - {ticket.unidad.numero}\n\n"
+        f"Detalles:\n{ticket.descripcion[:400]}\n\n"
+        f"Puedes gestionarlo en: {settings.SITE_URL}/tickets/{ticket.pk}/\n"
+    )
 
     try:
-        response = requests.post(webhook_url, json=payload, timeout=4)
-        response.raise_for_status()
-        logger.info("Notificación n8n enviada para ticket %s.", ticket.codigo)
+        send_mail(
+            subject=asunto,
+            message=mensaje,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.EMAIL_HOST_USER],  # Correo del admin
+            fail_silently=False,
+        )
+        logger.info("Notificación de correo enviada para nuevo ticket %s.", ticket.codigo)
         return True
-    except requests.exceptions.ConnectionError:
-        logger.warning("n8n no disponible — notificación omitida para %s.", ticket.codigo)
-    except requests.exceptions.Timeout:
-        logger.warning("n8n timeout — notificación omitida para %s.", ticket.codigo)
     except Exception as exc:
-        logger.warning("n8n error (%s) — notificación omitida para %s.", exc, ticket.codigo)
+        logger.error("Fallo al enviar correo para ticket %s: %s", ticket.codigo, exc)
         raise self.retry(exc=exc)
-    return False
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=10)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def notify_ticket_aprobado(self, ticket_id: int) -> bool:
-    """Envía notificación a n8n cuando el admin aprueba un ticket.
-
-    Informa al inquilino: 'Tu reporte fue aprobado. Selecciona tu horario aquí'.
-    """
-    webhook_url = getattr(settings, 'N8N_WEBHOOK_URL', '').strip()
-    if not webhook_url:
-        return False
-
+    """Envía un correo directo al inquilino cuando el administrador aprueba su ticket."""
     from apps.tickets.models import Ticket
     try:
-        ticket = Ticket.objects.select_related('inquilino', 'tecnico', 'unidad__edificio').get(pk=ticket_id)
+        ticket = Ticket.objects.select_related('inquilino').get(pk=ticket_id)
     except Ticket.DoesNotExist:
-        logger.warning("Ticket %d no encontrado para notificación n8n.", ticket_id)
+        logger.warning("Ticket %d no encontrado para notificación de aprobación.", ticket_id)
         return False
 
-    payload = {
-        'event': 'TICKET_APROBADO',
-        'ticket_id': ticket.pk,
-        'codigo': ticket.codigo,
-        'titulo': ticket.titulo,
-        'mensaje': 'Tu reporte fue aprobado. Selecciona tu horario de visita.',
-        'inquilino_nombre': ticket.inquilino.get_full_name(),
-        'inquilino_email': ticket.inquilino.email,
-        'tecnico_nombre': ticket.tecnico.get_full_name() if ticket.tecnico else 'Soporte Técnico',
-        'url_agendar': f"{settings.SITE_URL}/tickets/{ticket.pk}/",
-    }
+    asunto = f"Ticket Aprobado: {ticket.codigo}"
+    mensaje = (
+        f"Hola {ticket.inquilino.get_full_name()},\n\n"
+        f"Tu reporte '{ticket.titulo}' ha sido aprobado por el administrador.\n"
+        f"El siguiente paso es seleccionar el horario de visita para el soporte técnico.\n\n"
+        f"Puedes agendar tu cita aquí: {settings.SITE_URL}/tickets/{ticket.pk}/\n"
+    )
 
     try:
-        response = requests.post(webhook_url, json=payload, timeout=4)
-        response.raise_for_status()
-        logger.info("Notificación de aprobación enviada para ticket %s.", ticket.codigo)
+        send_mail(
+            subject=asunto,
+            message=mensaje,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[ticket.inquilino.email],
+            fail_silently=False,
+        )
+        logger.info("Notificación de aprobación de ticket enviada a %s.", ticket.inquilino.email)
         return True
-    except requests.exceptions.ConnectionError:
-        logger.warning("n8n no disponible — notificación omitida para %s.", ticket.codigo)
-    except requests.exceptions.Timeout:
-        logger.warning("n8n timeout — notificación omitida para %s.", ticket.codigo)
     except Exception as exc:
-        logger.warning("n8n error (%s) — notificación omitida para %s.", exc, ticket.codigo)
+        logger.error("Fallo al enviar correo de aprobación para %s: %s", ticket.codigo, exc)
         raise self.retry(exc=exc)
-    return False
 

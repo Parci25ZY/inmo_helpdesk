@@ -12,12 +12,15 @@ Cada formulario está pensado para un rol/contexto específico:
 
 from __future__ import annotations
 
+import re
+
 from django import forms
+from django.db.models import Q
 
 from apps.accounts.models import CustomUser
 from apps.properties.models import Unidad
 
-from .models import MensajeTicket, Ticket, TicketCategory, TicketPriority
+from .models import MensajeTicket, Ticket, TicketCategory, TicketPriority, TicketStatus
 
 INPUT_CLASS = (
     'w-full bg-transparent border-0 border-b-2 border-zinc-200 py-3 px-0 '
@@ -32,10 +35,36 @@ SELECT_CLASS = (
 TEXTAREA_CLASS = INPUT_CLASS + ' min-h-[140px] resize-y'
 
 
+# Palabras que no aportan información real
+_PALABRAS_VACIAS = re.compile(
+    r'^[\s\W]*(test|prueba|asd|asdf|xxx|zzz|111|123|hola|ok|si|no)[\s\W]*$',
+    re.IGNORECASE,
+)
+# Estados que se consideran «activos» — un ticket en estos estados bloquea duplicados
+_ESTADOS_ACTIVOS = {
+    TicketStatus.CREADO_PENDIENTE_IA,
+    TicketStatus.ANALIZADO_POR_IA,
+    TicketStatus.PENDIENTE_VALIDACION,
+    TicketStatus.APROBADO,
+    TicketStatus.ASIGNADO,
+    TicketStatus.EN_CAMINO,
+    TicketStatus.EN_PROGRESO,
+}
+
+
 class TicketCreateForm(forms.ModelForm):
-    """Formulario público para creación de tickets por parte del residente."""
+    """Formulario público para creación de tickets por parte del residente.
+
+    Validaciones:
+    · Título: mínimo 10 caracteres, no puede ser texto sin sentido.
+    · Descripción: mínimo 30 caracteres.
+    · Anti-duplicado: no se permite crear un ticket si el inquilino ya tiene
+      uno activo en la misma unidad con título idéntico, o si el título es
+      demasiado similar al de un ticket ya abierto (mismo inquilino).
+    """
 
     def __init__(self, *args, inquilino=None, **kwargs):
+        self._inquilino = inquilino
         super().__init__(*args, **kwargs)
         if inquilino is not None:
             unidad = getattr(inquilino, 'unidad_asignada', None)
@@ -45,6 +74,70 @@ class TicketCreateForm(forms.ModelForm):
             else:
                 self.fields['unidad'].queryset = Unidad.objects.none()
 
+    # ── Validaciones de campo individual ───────────────────────────────
+
+    def clean_titulo(self):
+        titulo = self.cleaned_data.get('titulo', '').strip()
+        if len(titulo) < 10:
+            raise forms.ValidationError(
+                'El título debe tener al menos 10 caracteres. '
+                'Sé específico: qué es, dónde está y qué ocurre.'
+            )
+        if _PALABRAS_VACIAS.match(titulo):
+            raise forms.ValidationError(
+                'El título no contiene información útil. '
+                'Describe el problema real (ej: "Fuga de agua en cocina, piso 2").'
+            )
+        return titulo
+
+    def clean_descripcion(self):
+        descripcion = self.cleaned_data.get('descripcion', '').strip()
+        if len(descripcion) < 30:
+            raise forms.ValidationError(
+                'La descripción debe tener al menos 30 caracteres. '
+                'Incluye: qué ocurre, dónde exactamente y desde cuándo.'
+            )
+        return descripcion
+
+    # ── Validación cruzada (anti-duplicado) ────────────────────────────
+
+    def clean(self):
+        cleaned = super().clean()
+        titulo = cleaned.get('titulo', '').strip().lower()
+        unidad = cleaned.get('unidad')
+
+        if not titulo or not unidad or not self._inquilino:
+            return cleaned
+
+        # 1. Mismo inquilino + misma unidad + título idéntico + ticket activo
+        duplicado_exacto = Ticket.objects.filter(
+            inquilino=self._inquilino,
+            unidad=unidad,
+            titulo__iexact=titulo,
+            estado__in=_ESTADOS_ACTIVOS,
+        ).first()
+        if duplicado_exacto:
+            raise forms.ValidationError(
+                f'Ya tienes un ticket activo con este título en la misma unidad '
+                f'({duplicado_exacto.codigo} — estado: {duplicado_exacto.get_estado_display()}). '
+                'Espera a que sea resuelto antes de crear uno nuevo.'
+            )
+
+        # 2. Mismo inquilino con ticket activo (cualquier título) en la misma unidad
+        #    — bloquea solo si tiene más de 3 tickets activos simultáneos
+        activos_count = Ticket.objects.filter(
+            inquilino=self._inquilino,
+            estado__in=_ESTADOS_ACTIVOS,
+        ).count()
+        if activos_count >= 3:
+            raise forms.ValidationError(
+                f'Tienes {activos_count} tickets activos en este momento. '
+                'El sistema permite un máximo de 3 tickets abiertos simultáneos. '
+                'Espera a que alguno sea resuelto para abrir uno nuevo.'
+            )
+
+        return cleaned
+
     class Meta:
         model = Ticket
         fields = ['unidad', 'titulo', 'descripcion']
@@ -52,13 +145,15 @@ class TicketCreateForm(forms.ModelForm):
             'unidad': forms.Select(attrs={'class': SELECT_CLASS}),
             'titulo': forms.TextInput(attrs={
                 'class': INPUT_CLASS,
-                'placeholder': 'Ej. Fuga de agua en cocina',
+                'placeholder': 'Ej. Fuga de agua en cocina — mínimo 10 caracteres',
                 'maxlength': 200,
+                'minlength': '10',
             }),
             'descripcion': forms.Textarea(attrs={
                 'class': TEXTAREA_CLASS,
-                'placeholder': 'Describe con detalle qué ocurre, dónde y cuándo empezó.',
+                'placeholder': 'Describe qué ocurre, dónde exactamente y desde cuándo. Mínimo 30 caracteres.',
                 'rows': 5,
+                'minlength': '30',
             }),
         }
 
@@ -239,7 +334,25 @@ class TicketTransitionForm(forms.Form):
 
 
 class TicketResolutionForm(forms.ModelForm):
-    """Form que el técnico envía al cerrar el ticket."""
+    """Form que el técnico envía al cerrar el ticket.
+
+    Las notas de resolución son obligatorias y deben contener al menos
+    40 caracteres para asegurar que la intervención quede documentada.
+    """
+
+    def clean_notas_resolucion(self):
+        notas = self.cleaned_data.get('notas_resolucion', '').strip()
+        if not notas:
+            raise forms.ValidationError(
+                'Las notas de resolución son obligatorias. '
+                'Documenta qué se hizo, qué materiales se usaron y el resultado.'
+            )
+        if len(notas) < 40:
+            raise forms.ValidationError(
+                f'Las notas deben tener al menos 40 caracteres ({len(notas)} actuales). '
+                'Sé descriptivo: qué problema había, qué se hizo y cómo quedó.'
+            )
+        return notas
 
     class Meta:
         model = Ticket
@@ -248,7 +361,12 @@ class TicketResolutionForm(forms.ModelForm):
             'notas_resolucion': forms.Textarea(attrs={
                 'class': TEXTAREA_CLASS,
                 'rows': 5,
-                'placeholder': 'Resumen de la intervención, materiales, observaciones.',
+                'minlength': '40',
+                'placeholder': (
+                    'Documenta la intervención: problema encontrado, '
+                    'materiales usados, trabajos realizados y resultado final. '
+                    'Mínimo 40 caracteres.'
+                ),
             }),
         }
 
