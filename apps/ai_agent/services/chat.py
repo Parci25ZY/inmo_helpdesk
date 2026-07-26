@@ -101,15 +101,26 @@ def _session_history(sesion: ChatSession, limit: int = 8) -> list[dict[str, str]
     return history
 
 
-def process_user_message(asistente_msg: ChatMessage) -> ChatMessage:
-    """Procesa el mensaje del usuario vinculado y actualiza la respuesta del asistente."""
+def process_user_message(
+    asistente_msg: ChatMessage,
+    user_msg: ChatMessage | None = None,
+) -> ChatMessage:
+    """Procesa el mensaje del usuario vinculado y actualiza la respuesta del asistente.
+
+    `user_msg` debe pasarse explícitamente desde el llamador (que ya lo tiene,
+    por haberlo creado un instante antes). Si no se provee, se recurre a buscar
+    por timestamp como fallback — pero `creado_en` tiene resolución de
+    microsegundos y dos mensajes creados en sucesión rápida pueden empatar,
+    haciendo que esta búsqueda no encuentre nada.
+    """
     sesion = asistente_msg.sesion
-    user_msg = (
-        sesion.mensajes
-        .filter(rol=ChatMessage.Rol.USUARIO, creado_en__lt=asistente_msg.creado_en)
-        .order_by('-creado_en')
-        .first()
-    )
+    if user_msg is None:
+        user_msg = (
+            sesion.mensajes
+            .filter(rol=ChatMessage.Rol.USUARIO, creado_en__lt=asistente_msg.creado_en)
+            .order_by('-creado_en')
+            .first()
+        )
     if not user_msg:
         asistente_msg.contenido = 'No encontré tu mensaje. Intenta de nuevo.'
         asistente_msg.estado_proceso = ChatMessage.EstadoProceso.ERROR
@@ -117,23 +128,27 @@ def process_user_message(asistente_msg: ChatMessage) -> ChatMessage:
         return asistente_msg
 
     try:
-        query_embedding = embed_query(user_msg.contenido)
-        chunks = retrieve_relevant_chunks(query_embedding)
-        context = _build_context(chunks)
         history = _session_history(sesion)
 
-        user_prompt = f"""CONTEXTO RAG:
+        # LangChain es el único camino de embedding + recuperación + generación
+        # en el caso normal — antes se hacía una recuperación aquí Y otra
+        # (redundante) dentro de generate_with_langchain, duplicando cada
+        # llamada a la API de Gemini. El camino nativo queda solo como
+        # fallback si LangChain falla (dependencia caída, error de parseo, etc.).
+        try:
+            from apps.ai_agent.services.langchain_rag import generate_with_langchain
+            result, chunks = generate_with_langchain(user_msg.contenido, history)
+        except Exception:
+            query_embedding = embed_query(user_msg.contenido)
+            chunks = retrieve_relevant_chunks(query_embedding)
+            context = _build_context(chunks)
+            user_prompt = f"""CONTEXTO RAG:
 {context}
 
 PREGUNTA DEL INQUILINO:
 {user_msg.contenido}
 
 Responde según las reglas del sistema."""
-
-        try:
-            from apps.ai_agent.services.langchain_rag import generate_with_langchain
-            result = generate_with_langchain(user_msg.contenido, history)
-        except Exception:
             result = generate_chat_response(
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,

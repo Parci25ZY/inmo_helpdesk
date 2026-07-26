@@ -83,10 +83,10 @@ class ChatMessageSendView(APIView):
         sesion.save(update_fields=['actualizado_en'])
 
         try:
-            process_chat_message.delay(asistente_msg.pk)
+            process_chat_message.delay(asistente_msg.pk, user_msg.pk)
         except Exception:
             from apps.ai_agent.services.chat import process_user_message
-            process_user_message(asistente_msg)
+            process_user_message(asistente_msg, user_msg)
 
         return Response(
             {

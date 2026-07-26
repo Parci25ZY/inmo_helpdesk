@@ -10,7 +10,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from apps.ai_agent.models import KnowledgeChunk
 
@@ -34,9 +34,17 @@ class EscalationSchema(BaseModel):
 
 
 class PostgresRAGRetriever(BaseRetriever):
-    """Retriever LangChain que consulta KnowledgeChunk en PostgreSQL."""
+    """Retriever LangChain que consulta KnowledgeChunk en PostgreSQL.
+
+    Además de devolver los `Document` que espera la interfaz de LangChain,
+    guarda los `KnowledgeChunk` reales de la última recuperación en
+    `last_chunks_used` — así el llamador puede reusarlos (para marcar
+    `chunks_usados` y para las reglas de escalación) sin tener que volver a
+    embeder la consulta ni a consultar la base de datos una segunda vez.
+    """
 
     top_k: int = 4
+    _last_chunks: list[KnowledgeChunk] = PrivateAttr(default_factory=list)
 
     def _get_relevant_documents(self, query: str) -> list[Document]:
         embeddings = GoogleGenerativeAIEmbeddings(
@@ -45,6 +53,7 @@ class PostgresRAGRetriever(BaseRetriever):
         )
         query_vector = embeddings.embed_query(query)
         chunks = retrieve_relevant_chunks(query_vector, top_k=self.top_k)
+        self._last_chunks = chunks
         return [
             Document(
                 page_content=chunk.contenido,
@@ -56,14 +65,26 @@ class PostgresRAGRetriever(BaseRetriever):
             for chunk in chunks
         ]
 
+    @property
+    def last_chunks_used(self) -> list[KnowledgeChunk]:
+        return self._last_chunks
+
 
 def generate_with_langchain(
     user_message: str,
     history: list[dict[str, str]] | None = None,
-) -> dict[str, Any]:
-    """Genera respuesta estructurada usando LangChain + retriever RAG."""
+) -> tuple[dict[str, Any], list[KnowledgeChunk]]:
+    """Genera respuesta estructurada usando LangChain + retriever RAG.
+
+    Único punto de embedding/recuperación por mensaje: el retriever hace
+    ambas cosas una sola vez y expone los chunks usados via
+    `last_chunks_used`, en vez de que el llamador recupere el contexto por
+    su cuenta antes de invocar esta función (lo que antes duplicaba la
+    llamada de embeddings y la búsqueda en la base de datos en cada mensaje).
+    """
     retriever = PostgresRAGRetriever()
     docs = retriever.invoke(user_message)
+    chunks = retriever.last_chunks_used
     context = '\n\n'.join(
         f"[{i + 1}] {d.metadata.get('titulo', 'FAQ')} ({d.metadata.get('categoria', '')}):\n{d.page_content}"
         for i, d in enumerate(docs)
@@ -96,6 +117,6 @@ PREGUNTA:
         'format_instructions': parser.get_format_instructions(),
     })
 
-    if isinstance(result, dict):
-        return result
-    return result.model_dump()
+    if not isinstance(result, dict):
+        result = result.model_dump()
+    return result, chunks

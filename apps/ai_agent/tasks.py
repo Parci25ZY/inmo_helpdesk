@@ -174,11 +174,19 @@ def analyze_ticket(self, ticket_id: int) -> dict:
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=3)
-def process_chat_message(self, mensaje_id: int) -> dict:
-    """Procesa respuesta del asistente para un mensaje de usuario."""
+def process_chat_message(self, mensaje_id: int, user_mensaje_id: int | None = None) -> dict:
+    """Procesa respuesta del asistente para un mensaje de usuario.
+
+    `user_mensaje_id` identifica sin ambigüedad el mensaje del usuario que
+    disparó esta respuesta, evitando que process_user_message tenga que
+    adivinarlo buscando por timestamp (ver chat.py::process_user_message).
+    """
     try:
         asistente_msg = ChatMessage.objects.select_related('sesion').get(pk=mensaje_id)
-        process_user_message(asistente_msg)
+        user_msg = None
+        if user_mensaje_id is not None:
+            user_msg = ChatMessage.objects.filter(pk=user_mensaje_id).first()
+        process_user_message(asistente_msg, user_msg)
         return {
             'mensaje_uuid': str(asistente_msg.uuid),
             'estado': asistente_msg.estado_proceso,

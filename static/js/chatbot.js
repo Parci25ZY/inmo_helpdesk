@@ -249,6 +249,30 @@
             input.style.height = 'auto';
         }
 
+        // Renderizado optimista: se pinta el mensaje del usuario y el indicador
+        // "escribiendo…" de inmediato, sin esperar la respuesta del servidor.
+        // Antes ambos aparecían recién cuando el fetch resolvía, lo que en modo
+        // Celery eager (todo el pipeline de Gemini corre dentro del mismo
+        // request) dejaba la pantalla congelada varios segundos sin feedback.
+        const now = new Date().toISOString();
+        const tempUserEl = renderMessage({
+            uuid: 'temp-user-' + Date.now(),
+            rol: 'USUARIO',
+            contenido: content,
+            estado_proceso: 'COMPLETADO',
+            creado_en: now,
+        });
+        const tempAssistantEl = renderMessage({
+            uuid: 'temp-assistant-' + Date.now(),
+            rol: 'ASISTENTE',
+            contenido: '',
+            estado_proceso: 'PENDIENTE',
+            creado_en: now,
+        });
+        messagesEl.appendChild(tempUserEl);
+        messagesEl.appendChild(tempAssistantEl);
+        scrollToBottom(true);
+
         apiFetch(SEND_URL, {
             method: 'POST',
             body: JSON.stringify({ contenido: content }),
@@ -258,14 +282,14 @@
                 return r.json();
             })
             .then(data => {
-                messagesEl.appendChild(renderMessage(data.user_message));
-                messagesEl.appendChild(renderMessage(data.assistant_message));
+                tempUserEl.replaceWith(renderMessage(data.user_message));
+                tempAssistantEl.replaceWith(renderMessage(data.assistant_message));
                 scrollToBottom(true);
                 pollMessage(data.assistant_message.uuid);
             })
             .catch(() => {
                 setSending(false);
-                messagesEl.appendChild(renderMessage({
+                tempAssistantEl.replaceWith(renderMessage({
                     uuid: 'err-' + Date.now(),
                     rol: 'ASISTENTE',
                     contenido: 'No se pudo enviar. Verifica tu conexión.',

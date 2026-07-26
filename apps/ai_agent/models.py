@@ -12,6 +12,8 @@ from django.utils.translation import gettext_lazy as _
 class KnowledgeCategory(models.TextChoices):
     PLOMERIA = 'PLOMERIA', _('Plomería')
     ELECTRICIDAD = 'ELECTRICIDAD', _('Electricidad')
+    INFRAESTRUCTURA = 'INFRAESTRUCTURA', _('Infraestructura')
+    LIMPIEZA = 'LIMPIEZA', _('Limpieza')
     SEGURIDAD = 'SEGURIDAD', _('Seguridad')
     REGLAMENTO = 'REGLAMENTO', _('Reglamento')
     GENERAL = 'GENERAL', _('General')
