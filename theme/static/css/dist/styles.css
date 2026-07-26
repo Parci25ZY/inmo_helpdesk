@@ -1896,6 +1896,9 @@
   .mt-8 {
     margin-top: calc(var(--spacing) * 8);
   }
+  .mt-10 {
+    margin-top: calc(var(--spacing) * 10);
+  }
   .mt-12 {
     margin-top: calc(var(--spacing) * 12);
   }
@@ -1998,6 +2001,31 @@
       --size: calc(var(--size-selector, 0.25rem) * 6);
       height: var(--size);
       padding-inline: calc(var(--size) / 2 - var(--border));
+    }
+  }
+  @layer daisyui.l1.l2.l3 {
+    .footer {
+      display: grid;
+      width: 100%;
+      grid-auto-flow: row;
+      place-items: start;
+      column-gap: calc(0.25rem * 4);
+      row-gap: calc(0.25rem * 10);
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+    .footer > * {
+      display: grid;
+      place-items: start;
+      gap: calc(0.25rem * 2);
+    }
+    .footer.footer-center {
+      grid-auto-flow: column dense;
+      place-items: center;
+      text-align: center;
+    }
+    .footer.footer-center > * {
+      place-items: center;
     }
   }
   .alert {
@@ -3979,6 +4007,11 @@
     }
   }
   @media (hover: hover) {
+    .hover\:bg-emerald-50:hover {
+      background-color: var(--color-emerald-50);
+    }
+  }
+  @media (hover: hover) {
     .hover\:bg-emerald-800:hover {
       background-color: var(--color-emerald-800);
     }
@@ -4056,6 +4089,11 @@
   @media (hover: hover) {
     .hover\:text-amber-600:hover {
       color: var(--color-amber-600);
+    }
+  }
+  @media (hover: hover) {
+    .hover\:text-emerald-600:hover {
+      color: var(--color-emerald-600);
     }
   }
   @media (hover: hover) {

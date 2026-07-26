@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* ── Reset & Base ─────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    @page {
+      size: A4;
+      margin: 20mm 18mm 25mm 18mm;
+      @bottom-center {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 8pt;
+        color: #71717a;
+      }
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.5;
+      color: #18181b;
+      background: #ffffff;
+    }
+
+    /* ── Header / Encabezado Condominio ───────────── */
+    .header {
+      border-bottom: 3px solid #18181b;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      background: #18181b;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 14pt;
+      letter-spacing: -1px;
+    }
+
+    .header-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #18181b;
+      letter-spacing: -0.5px;
+    }
+
+    .header-subtitle {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: #71717a;
+      margin-top: 2px;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 8pt;
+      color: #52525b;
+    }
+
+    .header-meta strong {
+      color: #18181b;
+    }
+
+    .edificio-bar {
+      margin-top: 12px;
+      background: #f4f4f5;
+      border: 1px solid #e4e4e7;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .edificio-bar .label {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #71717a;
+    }
+
+    .edificio-bar .value {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #18181b;
+      margin-top: 2px;
+    }
+
+    /* ── Secciones ────────────────────────────────── */
+    .section {
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      font-size: 9pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #18181b;
+      border-bottom: 2px solid #18181b;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+
+    .section-title--amber {
+      border-bottom-color: #f59e0b;
+    }
+
+    .section-title--emerald {
+      border-bottom-color: #10b981;
+    }
+
+    .section-title--indigo {
+      border-bottom-color: #6366f1;
+    }
+
+    /* ── Info Grid ────────────────────────────────── */
+    .info-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border: 1px solid #e4e4e7;
+    }
+
+    .info-cell {
+      width: 50%;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e4e4e7;
+    }
+
+    .info-cell:nth-child(odd) {
+      border-right: 1px solid #e4e4e7;
+    }
+
+    .info-cell .label {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #a1a1aa;
+    }
+
+    .info-cell .value {
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: #18181b;
+      margin-top: 1px;
+    }
+
+    .info-cell .value--mono {
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+
+    .info-cell--full {
+      width: 100%;
+      border-right: none !important;
+    }
+
+    /* ── Badge de Estado ──────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border: 1px solid;
+    }
+
+    .badge--resuelto {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .badge--alta {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .badge--media {
+      background: #fffbeb;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .badge--baja {
+      background: #f0fdf4;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    /* ── Personas ─────────────────────────────────── */
+    .persona-card {
+      border: 1px solid #e4e4e7;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .persona-avatar {
+      width: 34px;
+      height: 34px;
+      background: #18181b;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11pt;
+      flex-shrink: 0;
+    }
+
+    .persona-info .name {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #18181b;
+    }
+
+    .persona-info .role {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #f59e0b;
+      margin-top: 1px;
+    }
+
+    .persona-info .detail {
+      font-size: 8.5pt;
+      color: #52525b;
+      margin-top: 3px;
+    }
+
+    /* ── Descripción ──────────────────────────────── */
+    .text-block {
+      border: 1px solid #e4e4e7;
+      padding: 12px 14px;
+      font-size: 9.5pt;
+      line-height: 1.6;
+      color: #3f3f46;
+      background: #fafafa;
+    }
+
+    .text-block--ia {
+      border-left: 3px solid #8b5cf6;
+      background: #f5f3ff;
+    }
+
+    .text-block-label {
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #8b5cf6;
+      margin-bottom: 4px;
+    }
+
+    /* ── Evidencias ───────────────────────────────── */
+    .evidencia-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .evidencia-item {
+      width: 47%;
+      border: 1px solid #e4e4e7;
+      page-break-inside: avoid;
+    }
+
+    .evidencia-item img {
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      display: block;
+      object-fit: contain;
+    }
+
+    .evidencia-caption {
+      padding: 6px 10px;
+      background: #f4f4f5;
+      border-top: 1px solid #e4e4e7;
+    }
+
+    .evidencia-caption .autor {
+      font-size: 8pt;
+      font-weight: 600;
+      color: #18181b;
+    }
+
+    .evidencia-caption .fecha {
+      font-size: 7pt;
+      color: #71717a;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+
+    .evidencia-caption .desc {
+      font-size: 8pt;
+      color: #52525b;
+      margin-top: 2px;
+    }
+
+    .no-evidencias {
+      padding: 14px;
+      text-align: center;
+      font-size: 8.5pt;
+      color: #a1a1aa;
+      border: 1px dashed #d4d4d8;
+      font-style: italic;
+    }
+
+    /* ── Historial / Timeline ────────────────────── */
+    .timeline {
+      border: 1px solid #e4e4e7;
+    }
+
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      padding: 7px 14px;
+      border-bottom: 1px solid #f4f4f5;
+      font-size: 8.5pt;
+    }
+
+    .timeline-row:last-child {
+      border-bottom: none;
+    }
+
+    .timeline-row:nth-child(even) {
+      background: #fafafa;
+    }
+
+    .timeline-dot {
+      width: 7px;
+      height: 7px;
+      background: #18181b;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-right: 10px;
+    }
+
+    .timeline-dot--final {
+      background: #10b981;
+    }
+
+    .timeline-estado {
+      font-weight: 700;
+      color: #18181b;
+      width: 160px;
+      flex-shrink: 0;
+    }
+
+    .timeline-actor {
+      color: #52525b;
+      width: 160px;
+      flex-shrink: 0;
+    }
+
+    .timeline-fecha {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 7.5pt;
+      color: #71717a;
+      margin-left: auto;
+    }
+
+    .timeline-nota {
+      font-size: 8pt;
+      color: #71717a;
+      font-style: italic;
+      padding-left: 17px;
+      padding-bottom: 4px;
+    }
+
+    /* ── Footer ───────────────────────────────────── */
+    .footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid #d4d4d8;
+      text-align: center;
+      font-size: 7pt;
+      color: #a1a1aa;
+      letter-spacing: 0.5px;
+    }
+
+    .footer strong {
+      color: #71717a;
+    }
+
+    /* ── Utilidades ───────────────────────────────── */
+    .mt-6  { margin-top: 6px; }
+    .mt-10 { margin-top: 10px; }
+    .mb-4  { margin-bottom: 4px; }
+
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ENCABEZADO DEL CONDOMINIO
+       ════════════════════════════════════════════════════════════ -->
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">
+        <div class="header-logo">IH</div>
+        <div>
+          <div class="header-title">InmoHelpdesk</div>
+          <div class="header-subtitle">{% if is_audit %}Reporte de Auditoría — Respaldo Legal{% else %}Comprobante de Garantía de Servicio{% endif %}</div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div><strong>{{ ticket.codigo }}</strong></div>
+        <div>Generado: {{ fecha_generacion|date:"d/m/Y H:i" }}</div>
+      </div>
+    </div>
+
+    <div class="edificio-bar">
+      <div>
+        <div class="label">Condominio / Edificio</div>
+        <div class="value">{{ edificio.nombre }}</div>
+      </div>
+      <div>
+        <div class="label">Código</div>
+        <div class="value">{{ edificio.codigo }}</div>
+      </div>
+      <div>
+        <div class="label">Dirección</div>
+        <div class="value">{{ edificio.direccion }}, {{ edificio.ciudad }}</div>
+      </div>
+      <div>
+        <div class="label">Unidad</div>
+        <div class="value">#{{ unidad.numero }} · Piso {{ unidad.piso }}</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       INFORMACIÓN DEL TICKET
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title section-title--amber">Datos de la Incidencia</div>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="label">Código</div>
+        <div class="value value--mono">{{ ticket.codigo }}</div>
+      </div>
+      <div class="info-cell">
+        <div class="label">Estado</div>
+        <div class="value">
+          <span class="badge badge--resuelto">{{ ticket.get_estado_display }}</span>
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="label">Categoría</div>
+        <div class="value">{{ ticket.get_categoria_display|default:"Sin categoría" }}</div>
+      </div>
+      <div class="info-cell">
+        <div class="label">Prioridad</div>
+        <div class="value">
+          {% if ticket.prioridad == 'ALTA' %}
+            <span class="badge badge--alta">{{ ticket.get_prioridad_display }}</span>
+          {% elif ticket.prioridad == 'MEDIA' %}
+            <span class="badge badge--media">{{ ticket.get_prioridad_display }}</span>
+          {% else %}
+            <span class="badge badge--baja">{{ ticket.get_prioridad_display }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="label">Fecha de Creación</div>
+        <div class="value value--mono">{{ ticket.creado_en|date:"d/m/Y H:i" }}</div>
+      </div>
+      <div class="info-cell">
+        <div class="label">Fecha de Resolución</div>
+        <div class="value value--mono">{% if ticket.resuelto_en %}{{ ticket.resuelto_en|date:"d/m/Y H:i" }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="info-cell info-cell--full">
+        <div class="label">Título / Incidencia</div>
+        <div class="value">{{ ticket.titulo }}</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       AUTORES INVOLUCRADOS
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Autores Involucrados</div>
+
+    <!-- Residente -->
+    <div class="persona-card">
+      <div class="persona-avatar">{{ inquilino.first_name|slice:":1" }}{{ inquilino.last_name|slice:":1" }}</div>
+      <div class="persona-info">
+        <div class="name">{{ inquilino.get_full_name }}</div>
+        <div class="role">Residente / Inquilino</div>
+        <div class="detail">
+          {{ inquilino.email }}
+          {% if inquilino.cedula %} · CI: {{ inquilino.cedula }}{% endif %}
+          {% if inquilino.phone %} · Tel: {{ inquilino.phone }}{% endif %}
+        </div>
+        <div class="detail">Unidad: {{ unidad.edificio.nombre }} — #{{ unidad.numero }}, Piso {{ unidad.piso }} ({{ unidad.get_tipo_display }})</div>
+      </div>
+    </div>
+
+    <!-- Técnico -->
+    {% if tecnico %}
+    <div class="persona-card">
+      <div class="persona-avatar">{{ tecnico.first_name|slice:":1" }}{{ tecnico.last_name|slice:":1" }}</div>
+      <div class="persona-info">
+        <div class="name">{{ tecnico.get_full_name }}</div>
+        <div class="role">Técnico Asignado</div>
+        <div class="detail">
+          {{ tecnico.email }}
+          {% if tecnico.phone %} · Tel: {{ tecnico.phone }}{% endif %}
+        </div>
+        {% if tecnico.especialidades_display %}
+        <div class="detail">Especialidades: {{ tecnico.especialidades_display }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       DESCRIPCIÓN DEL INCIDENTE
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title section-title--amber">Descripción del Incidente</div>
+    <div class="text-block">{{ ticket.descripcion }}</div>
+
+    {% if ticket.ia_descripcion_tecnica %}
+    <div class="mt-6">
+      <div class="text-block text-block--ia">
+        <div class="text-block-label">Análisis Técnico IA</div>
+        {{ ticket.ia_descripcion_tecnica }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       NOTAS DE RESOLUCIÓN
+       ════════════════════════════════════════════════════════════ -->
+  {% if ticket.notas_resolucion %}
+  <div class="section">
+    <div class="section-title section-title--emerald">Notas de Resolución</div>
+    <div class="text-block">{{ ticket.notas_resolucion }}</div>
+  </div>
+  {% endif %}
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       EVIDENCIAS — REPORTE DEL RESIDENTE
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title section-title--amber">Evidencias — Reporte del Residente</div>
+    {% if evidencias_reporte %}
+    <div class="evidencia-grid">
+      {% for ev in evidencias_reporte %}
+      <div class="evidencia-item">
+        {% if ev.archivo_uri %}
+        <img src="{{ ev.archivo_uri }}" alt="Evidencia reporte">
+        {% endif %}
+        <div class="evidencia-caption">
+          <div class="autor">{{ ev.subido_por.get_full_name|default:"Residente" }}</div>
+          <div class="fecha">{{ ev.creado_en|date:"d/m/Y H:i" }}</div>
+          {% if ev.descripcion %}<div class="desc">{{ ev.descripcion }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-evidencias">No se adjuntaron evidencias en el reporte inicial.</div>
+    {% endif %}
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       EVIDENCIAS — RESOLUCIÓN DEL TÉCNICO
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title section-title--emerald">Evidencias — Resolución del Técnico</div>
+    {% if evidencias_resolucion %}
+    <div class="evidencia-grid">
+      {% for ev in evidencias_resolucion %}
+      <div class="evidencia-item">
+        {% if ev.archivo_uri %}
+        <img src="{{ ev.archivo_uri }}" alt="Evidencia resolución">
+        {% endif %}
+        <div class="evidencia-caption">
+          <div class="autor">{{ ev.subido_por.get_full_name|default:"Técnico" }}</div>
+          <div class="fecha">{{ ev.creado_en|date:"d/m/Y H:i" }}</div>
+          {% if ev.descripcion %}<div class="desc">{{ ev.descripcion }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-evidencias">No se adjuntaron evidencias de resolución.</div>
+    {% endif %}
+  </div>
+
+
+  {% if is_audit %}
+  <!-- ════════════════════════════════════════════════════════════════
+       HISTORIAL DE ESTADOS (SOLO AUDITORÍA)
+       ════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title section-title--indigo">Historial de Estados — Auditoría</div>
+    {% if historial %}
+    <div class="timeline">
+      {% for h in historial %}
+      <div class="timeline-row">
+        <div class="timeline-dot {% if h.estado_nuevo == 'RESUELTO' %}timeline-dot--final{% endif %}"></div>
+        <div class="timeline-estado">
+          {% if h.estado_anterior %}{{ h.get_estado_anterior_display }} →{% endif %}
+          {{ h.get_estado_nuevo_display }}
+        </div>
+        <div class="timeline-actor">{{ h.actor.get_full_name|default:"Sistema" }}</div>
+        <div class="timeline-fecha">{{ h.creado_en|date:"d/m/Y H:i" }}</div>
+      </div>
+      {% if h.nota %}
+      <div class="timeline-nota">{{ h.nota }}</div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-evidencias">Sin historial de transiciones registrado.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       PIE DE PÁGINA
+       ════════════════════════════════════════════════════════════ -->
+  <div class="footer">
+    <p>Documento generado automáticamente por <strong>InmoHelpdesk</strong> — Sistema de Gestión de Incidencias</p>
+    <p>{{ fecha_generacion|date:"d/m/Y H:i:s" }} · {% if is_audit %}Este documento constituye respaldo legal para auditoría interna.{% else %}Este documento certifica la garantía del servicio de mantenimiento realizado.{% endif %}</p>
+    <p>{{ edificio.nombre }} · {{ edificio.direccion }}, {{ edificio.ciudad }}</p>
+  </div>
+
+</body>
+</html>

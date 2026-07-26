@@ -193,7 +193,7 @@ class TicketListView(LoginRequiredMixin, ListView):
             'search_query': self.request.GET.get('search', ''),
             **stats,
             'puede_crear': user.is_inquilino and getattr(user, 'unidad_asignada', None) is not None,
-            'chatbot_habilitado': user.is_inquilino or user.is_admin,
+            'chatbot_habilitado': user.is_inquilino,
         })
         return ctx
 

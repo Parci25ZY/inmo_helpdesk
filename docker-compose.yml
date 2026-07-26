@@ -1,18 +1,5 @@
 
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: inmo_db
-    environment:
-      - POSTGRES_DB=inmo_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=mundo123
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     container_name: inmo_redis
@@ -24,4 +11,3 @@ services:
 
 volumes:
   redis_data:
-  postgres_data:
