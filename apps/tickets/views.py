@@ -74,6 +74,24 @@ _TRANSITION_LABELS: dict[str, str] = {
 }
 
 
+def _errores_legibles(form) -> list[str]:
+    """Aplana los errores de un form a mensajes listos para ``messages.error``.
+
+    Las vistas de validación/reasignación responden con *redirect* al detalle
+    (no re-renderizan el form, porque ``detail.html`` necesita todo el contexto
+    de :class:`TicketDetailView`). Este helper conserva el detalle del error en
+    lugar de mostrar un genérico "datos inválidos".
+    """
+    salida: list[str] = []
+    for campo, errores in form.errors.items():
+        etiqueta = (
+            '' if campo == '__all__'
+            else f'{form.fields[campo].label or campo}: '
+        )
+        salida.extend(f'{etiqueta}{error}' for error in errores)
+    return salida or ['Datos inválidos. Revisa el formulario.']
+
+
 # ── Mixins ──────────────────────────────────────────────────────────────
 
 class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -316,13 +334,12 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
                 or (user.is_inquilino and ticket.inquilino_id == user.id)
             )
         )
-        # Chat de coordinación en estado APROBADO
+        # Chat de coordinación en estado APROBADO — solo técnico y residente,
+        # el administrador no participa en el hilo de comunicación.
         chat_coordinacion = (
             ticket.is_aprobado
-            and (
-                (user.is_inquilino and ticket.inquilino_id == user.id)
-                or user.is_admin
-            )
+            and user.is_inquilino
+            and ticket.inquilino_id == user.id
         )
 
         ctx.update({
@@ -488,14 +505,44 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
     def get_success_url(self) -> str:
         return reverse('ticket_detail', kwargs={'pk': self.object.pk})
 
+    def form_invalid(self, form):
+        """Vuelve al detalle con los errores como mensajes.
+
+        No se puede renderizar ``detail.html`` desde aquí: el contexto de
+        ``UpdateView`` no incluye ``puede_validar``/``validate_form``/etc., así
+        que el admin vería la ficha sin el formulario ni el error.
+        """
+        for error in _errores_legibles(form):
+            messages.error(self.request, error)
+        return redirect('ticket_detail', pk=self.kwargs['pk'])
+
     def form_valid(self, form):
         ticket: Ticket = form.save(commit=False)
         if ticket.estado != TicketStatus.PENDIENTE_VALIDACION:
             messages.error(self.request, 'El ticket ya no se encuentra en validación.')
             return redirect('ticket_detail', pk=ticket.pk)
+
+        # Segunda barrera (el form ya lo exige): nunca aprobar sin técnico ni
+        # sin clasificar — el residente recibiría un aviso para agendar contra
+        # una agenda inexistente.
         if not ticket.tecnico_id:
-            form.add_error('tecnico', 'Debes asignar un técnico.')
+            form.add_error('tecnico', 'Debes asignar un técnico antes de aprobar el ticket.')
             return self.form_invalid(form)
+        if not ticket.categoria:
+            form.add_error('categoria', 'Debes seleccionar una categoría.')
+            return self.form_invalid(form)
+        if not ticket.prioridad:
+            form.add_error('prioridad', 'Debes seleccionar una prioridad.')
+            return self.form_invalid(form)
+        if not ticket.tecnico.puede_aceptar_ticket(ticket.prioridad):
+            form.add_error(
+                'tecnico',
+                f'{ticket.tecnico.get_full_name()} ha alcanzado su límite de carga '
+                f'({ticket.tecnico.carga_trabajo_actual}/{ticket.tecnico.max_carga_trabajo} '
+                'puntos). Selecciona otro técnico o ajusta su límite.'
+            )
+            return self.form_invalid(form)
+
         ticket.save()
 
         try:
@@ -957,7 +1004,8 @@ class TicketReassignView(RoleRequiredMixin, View):
 
         form = TicketAdminValidateForm(request.POST, instance=ticket)
         if not form.is_valid():
-            messages.error(request, 'Datos inválidos al reasignar técnico.')
+            for error in _errores_legibles(form):
+                messages.error(request, error)
             return redirect('ticket_detail', pk=pk)
 
         nuevo_tecnico = form.cleaned_data.get('tecnico')

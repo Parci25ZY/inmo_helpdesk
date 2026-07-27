@@ -2,7 +2,29 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, UserChangeForm
 from .models import CustomUser
 
-class CustomUserCreationForm(UserCreationForm):
+
+class RequiredNameMixin:
+    """Exige nombre y apellido no vacíos aunque el modelo los declare blank=True."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['first_name'].required = True
+        self.fields['last_name'].required = True
+
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name', '').strip()
+        if not first_name:
+            raise forms.ValidationError('El nombre es obligatorio.')
+        return first_name
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name', '').strip()
+        if not last_name:
+            raise forms.ValidationError('El apellido es obligatorio.')
+        return last_name
+
+
+class CustomUserCreationForm(RequiredNameMixin, UserCreationForm):
     class Meta:
         model = CustomUser
         fields = ('first_name', 'last_name', 'email', 'phone', 'role')
@@ -17,7 +39,7 @@ class CustomAuthenticationForm(AuthenticationForm):
         'class': 'form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-dark dark:text-text-light focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 h-14 placeholder:text-zinc-400 dark:placeholder-zinc-500 p-3.5 text-base font-normal',
     }))
 
-class UserEditForm(UserChangeForm):
+class UserEditForm(RequiredNameMixin, UserChangeForm):
     """Formulario para editar usuarios existentes en el panel administrativo"""
     password = None  # Ocultar el campo de contraseña en la edición directa
 
@@ -140,7 +162,7 @@ _SELECT_CLASS = (
     'focus:border-zinc-900 transition-colors duration-200'
 )
 
-class UserCreateForm(UserCreationForm):
+class UserCreateForm(RequiredNameMixin, UserCreationForm):
     """Formulario para crear nuevos usuarios en el panel administrativo"""
 
     especialidades = forms.MultipleChoiceField(
@@ -265,7 +287,7 @@ _PROFILE_INPUT_CLASS = (
 )
 
 
-class ProfileEditForm(forms.ModelForm):
+class ProfileEditForm(RequiredNameMixin, forms.ModelForm):
     """Formulario seguro para que el usuario edite su propio perfil.
 
     Solo expone campos de información personal (nombre, email, teléfono).

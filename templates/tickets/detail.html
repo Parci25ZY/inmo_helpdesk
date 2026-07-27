@@ -186,24 +186,66 @@
                     {% endif %}
 
 
-                    <form method="POST" action="{% url 'ticket_validate' ticket.pk %}" class="space-y-4">
+                    <form method="POST" action="{% url 'ticket_validate' ticket.pk %}" class="space-y-4" id="validate-form" novalidate>
                         {% csrf_token %}
                         <div class="grid sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Categoría</label>
+                                <label for="{{ validate_form.categoria.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Categoría <span class="text-red-600">*</span></label>
                                 {{ validate_form.categoria }}
+                                <p class="hidden mt-1.5 text-xs font-medium text-red-700" data-error-for="{{ validate_form.categoria.id_for_label }}">Debes seleccionar una categoría.</p>
                             </div>
                             <div>
-                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Prioridad</label>
+                                <label for="{{ validate_form.prioridad.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Prioridad <span class="text-red-600">*</span></label>
                                 {{ validate_form.prioridad }}
+                                <p class="hidden mt-1.5 text-xs font-medium text-red-700" data-error-for="{{ validate_form.prioridad.id_for_label }}">Debes seleccionar una prioridad.</p>
                             </div>
                             <div>
-                                <label class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Técnico</label>
+                                <label for="{{ validate_form.tecnico.id_for_label }}" class="block text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-2">Técnico <span class="text-red-600">*</span></label>
                                 {{ validate_form.tecnico }}
+                                <p class="hidden mt-1.5 text-xs font-medium text-red-700" data-error-for="{{ validate_form.tecnico.id_for_label }}">Debes asignar un técnico antes de aprobar el ticket.</p>
                             </div>
                         </div>
-                        <button type="submit" class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase hover:bg-amber-400 hover:text-zinc-900 transition-all{% if sin_tecnicos_disponibles %} opacity-50{% endif %}">Aprobar Ticket y Notificar Residente →</button>
+                        <button type="submit"{% if sin_tecnicos_disponibles %} disabled{% endif %} class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all{% if sin_tecnicos_disponibles %} opacity-50 cursor-not-allowed{% else %} hover:bg-amber-400 hover:text-zinc-900{% endif %}">Aprobar Ticket y Notificar Residente →</button>
                     </form>
+
+                    {# Validación en cliente: impide enviar la aprobación sin
+                       categoría, prioridad o técnico. El servidor revalida en
+                       TicketAdminValidateForm — esto es solo feedback inmediato. #}
+                    <script>
+                    (function () {
+                        var form = document.getElementById('validate-form');
+                        if (!form) return;
+
+                        var campos = ['categoria', 'prioridad', 'tecnico']
+                            .map(function (n) { return form.querySelector('[name="' + n + '"]'); })
+                            .filter(Boolean);
+
+                        function marcar(campo, invalido) {
+                            var aviso = form.querySelector('[data-error-for="' + campo.id + '"]');
+                            if (aviso) aviso.classList.toggle('hidden', !invalido);
+                            campo.classList.toggle('border-red-500', invalido);
+                        }
+
+                        campos.forEach(function (campo) {
+                            campo.addEventListener('change', function () {
+                                if (campo.value) marcar(campo, false);
+                            });
+                        });
+
+                        form.addEventListener('submit', function (evento) {
+                            var primerInvalido = null;
+                            campos.forEach(function (campo) {
+                                var vacio = !campo.value;
+                                marcar(campo, vacio);
+                                if (vacio && !primerInvalido) primerInvalido = campo;
+                            });
+                            if (primerInvalido) {
+                                evento.preventDefault();
+                                primerInvalido.focus();
+                            }
+                        });
+                    })();
+                    </script>
                 </section>
                 {% endif %}
 

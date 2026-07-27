@@ -186,10 +186,30 @@ class TicketAdminValidateForm(forms.ModelForm):
         required=True,
         widget=forms.Select(attrs={'class': SELECT_CLASS}),
         label='Técnico',
+        error_messages={
+            'required': 'Debes asignar un técnico antes de aprobar el ticket.',
+        },
     )
 
     def __init__(self, *args, prioridad: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Categoría y prioridad son obligatorias en esta pantalla aunque el
+        # modelo permita blank/default: aprobar sin clasificar el ticket deja
+        # al técnico sin contexto y falsea las métricas.
+        self.fields['categoria'].required = True
+        self.fields['categoria'].choices = (
+            [('', '— Seleccionar categoría —')] + list(TicketCategory.choices)
+        )
+        self.fields['categoria'].error_messages['required'] = (
+            'Debes seleccionar una categoría.'
+        )
+        self.fields['prioridad'].required = True
+        self.fields['prioridad'].error_messages['required'] = (
+            'Debes seleccionar una prioridad.'
+        )
+        for nombre in ('categoria', 'prioridad'):
+            self.fields[nombre].widget.attrs['required'] = 'required'
 
         # Inferir prioridad desde la instancia si no se pasa explícitamente
         if prioridad is None and self.instance and self.instance.pk:
@@ -234,7 +254,7 @@ class TicketAdminValidateForm(forms.ModelForm):
         self.fields['tecnico'].choices = choices
         self.fields['tecnico'].widget = _TecnicoSelectWidget(
             sobrecargados={pk for pk, _ in sin_capacidad},
-            attrs={'class': SELECT_CLASS},
+            attrs={'class': SELECT_CLASS, 'required': 'required'},
         )
         self.fields['tecnico'].widget.choices = choices
 
@@ -246,11 +266,37 @@ class TicketAdminValidateForm(forms.ModelForm):
         """Convierte el PK del técnico seleccionado al objeto CustomUser."""
         pk = self.cleaned_data.get('tecnico')
         if not pk:
-            raise forms.ValidationError('Debes seleccionar un técnico.')
+            raise forms.ValidationError(
+                'Debes asignar un técnico antes de aprobar el ticket.'
+            )
         try:
             return CustomUser.objects.get(pk=pk, role=CustomUser.Roles.TECNICO, is_active=True)
         except CustomUser.DoesNotExist:
             raise forms.ValidationError('Técnico no válido o inactivo.')
+
+    def clean(self):
+        """Valida la capacidad del técnico contra la prioridad enviada.
+
+        La lista de choices se construye con la prioridad que tenía el ticket
+        al cargar la página; si el admin la sube en el mismo envío (ej. MEDIA →
+        ALTA) el técnico elegido puede quedarse sin capacidad. Se revalida aquí
+        con los datos realmente enviados.
+        """
+        cleaned = super().clean()
+        tecnico = cleaned.get('tecnico')
+        prioridad = cleaned.get('prioridad') or getattr(self.instance, 'prioridad', None)
+
+        if tecnico and prioridad and not tecnico.puede_aceptar_ticket(prioridad):
+            self.add_error(
+                'tecnico',
+                f'{tecnico.get_full_name()} ha alcanzado su límite de carga '
+                f'({tecnico.carga_trabajo_actual}/{tecnico.max_carga_trabajo} puntos) '
+                f'y no puede asumir un ticket de prioridad '
+                f'{dict(TicketPriority.choices).get(prioridad, prioridad)}. '
+                'Selecciona otro técnico o ajusta su límite.'
+            )
+
+        return cleaned
 
     class Meta:
         model = Ticket

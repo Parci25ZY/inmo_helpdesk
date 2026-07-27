@@ -2,8 +2,8 @@
 
 {% if msg.autor_id == request.user.id %}
 <div class="flex w-full justify-end gap-3 items-end">
-    <div class="max-w-[72%] flex flex-col gap-2 items-end">
-        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-900 text-white">
+    <div class="max-w-[72%] min-w-0 flex flex-col gap-2 items-end">
+        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-900 text-white whitespace-pre-wrap wrap-anywhere">
             {{ msg.mensaje }}
         </div>
         <p class="text-[0.6rem] font-mono text-zinc-400 px-2 select-none">
@@ -19,8 +19,8 @@
     <div class="w-9 h-9 shrink-0 flex items-center justify-center text-[0.6rem] font-bold uppercase rounded-full bg-zinc-200 text-zinc-700">
         {{ msg.autor.first_name|slice:":1" }}{{ msg.autor.last_name|slice:":1" }}
     </div>
-    <div class="max-w-[72%] flex flex-col gap-2 items-start">
-        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-100 text-zinc-900">
+    <div class="max-w-[72%] min-w-0 flex flex-col gap-2 items-start">
+        <div class="px-4 py-3 text-sm leading-relaxed rounded-2xl bg-zinc-100 text-zinc-900 whitespace-pre-wrap wrap-anywhere">
             {{ msg.mensaje }}
         </div>
         <p class="text-[0.6rem] font-mono text-zinc-400 px-2 select-none">

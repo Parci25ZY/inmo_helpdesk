@@ -819,7 +819,10 @@
     }
 
     function submitBooking() {
-        if (!pendingBooking) return;
+        if (!pendingBooking || !pendingBooking.fecha || !pendingBooking.horaInicio || !pendingBooking.horaFin) {
+            alert('Debes seleccionar un turno (día y horario) antes de confirmar.');
+            return;
+        }
 
         const btn = document.getElementById('confirm-submit-btn');
         btn.disabled = true;
