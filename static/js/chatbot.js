@@ -17,6 +17,9 @@
     const input = shell.querySelector('.chatbot-input');
     const sendBtn = shell.querySelector('.chatbot-send');
     const newSessionBtn = shell.querySelector('.chatbot-new-session');
+    const newSessionOverlay = document.getElementById('chatbot-newsession-overlay');
+    const newSessionCancelBtn = document.getElementById('chatbot-newsession-cancel');
+    const newSessionConfirmBtn = document.getElementById('chatbot-newsession-confirm');
     const escalateBox = shell.querySelector('.chatbot-escalate');
     const escalateText = shell.querySelector('.chatbot-escalate-text');
     const escalateLink = shell.querySelector('.chatbot-escalate-link');
@@ -330,8 +333,22 @@
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 104) + 'px';
     });
-    newSessionBtn?.addEventListener('click', () => {
-        if (confirm('¿Iniciar una nueva conversación?')) resetConversation();
+    function openNewSessionConfirm() {
+        newSessionOverlay?.classList.remove('hidden');
+    }
+
+    function closeNewSessionConfirm() {
+        newSessionOverlay?.classList.add('hidden');
+    }
+
+    newSessionBtn?.addEventListener('click', openNewSessionConfirm);
+    newSessionCancelBtn?.addEventListener('click', closeNewSessionConfirm);
+    newSessionConfirmBtn?.addEventListener('click', () => {
+        closeNewSessionConfirm();
+        resetConversation();
+    });
+    newSessionOverlay?.addEventListener('click', e => {
+        if (e.target === newSessionOverlay) closeNewSessionConfirm();
     });
 
     fab?.addEventListener('click', () => {

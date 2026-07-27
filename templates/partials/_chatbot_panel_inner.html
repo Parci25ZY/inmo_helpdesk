@@ -3,6 +3,21 @@
     <button type="button" class="chatbot-new-session chatbot-toolbar__link">Nueva</button>
 </div>
 
+<!-- Confirmación para iniciar una nueva conversación (reemplaza el confirm() nativo) -->
+<div id="chatbot-newsession-overlay" class="chatbot-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="chatbot-newsession-title">
+    <div class="chatbot-modal">
+        <p id="chatbot-newsession-title" class="chatbot-modal__title">Nueva conversación</p>
+        <p class="chatbot-modal__text">
+            Se cerrará el hilo actual y se iniciará uno nuevo desde cero. No podrás volver a ver
+            los mensajes de esta conversación.
+        </p>
+        <div class="chatbot-modal__actions">
+            <button type="button" class="chatbot-modal__btn chatbot-modal__btn--ghost" id="chatbot-newsession-cancel">Cancelar</button>
+            <button type="button" class="chatbot-modal__btn chatbot-modal__btn--primary" id="chatbot-newsession-confirm">Sí, iniciar nueva</button>
+        </div>
+    </div>
+</div>
+
 <div class="chatbot-body">
     <div class="chatbot-messages" role="log" aria-live="polite">
         <div class="chatbot-welcome chatbot-msg-block">

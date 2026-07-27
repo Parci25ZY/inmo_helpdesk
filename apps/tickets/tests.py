@@ -1,3 +1,202 @@
-from django.test import TestCase
+"""Tests para apps/tickets.
 
-# Create your tests here.
+Cubre la corrección de un bug real: las notificaciones de "nuevo ticket"
+(in-app + los dos correos) se enviaban al crear el ticket, cuando
+`categoria`/`prioridad` todavía eran el default del modelo (OTRO/MEDIA)
+porque la IA aún no lo había clasificado — el correo mostraba una
+prioridad distinta a la que luego se veía en el detalle del ticket.
+Ahora esas notificaciones se disparan en PENDIENTE_VALIDACION, cuando ya
+reflejan la clasificación final.
+"""
+from __future__ import annotations
+
+from datetime import timedelta
+from unittest.mock import patch
+
+import pytest
+from django.test import Client
+from django.urls import reverse
+from django.utils import timezone
+
+from apps.accounts.models import CustomUser, HorarioTrabajo
+from apps.properties.models import Edificio, Unidad
+from apps.tickets.models import Ticket, TicketCategory, TicketPriority, TicketStatus
+from apps.tickets.services.availability import find_consecutive_free_blocks, get_hour_blocks_for_day
+from apps.tickets.services.transitions import transition_ticket
+
+
+def _make_inquilino_con_unidad(email='residente@test.com'):
+    inquilino = CustomUser.objects.create_user(
+        email=email, password='clave12345', first_name='Ana', last_name='Residente',
+        role=CustomUser.Roles.INQUILINO,
+    )
+    edificio = Edificio.objects.create(
+        nombre='Torre Test', codigo=f'TT-{email[:3].upper()}', direccion='Calle Falsa 123',
+    )
+    Unidad.objects.create(edificio=edificio, numero='101', inquilino=inquilino)
+    return inquilino
+
+
+@pytest.mark.django_db
+class TestTicketCreatedNotificationTiming:
+    def test_creating_a_ticket_does_not_send_any_notification_yet(self):
+        inquilino = _make_inquilino_con_unidad()
+        client = Client()
+        client.force_login(inquilino)
+
+        with patch('apps.ai_agent.tasks.analyze_ticket.apply_async') as mock_analyze, \
+             patch('apps.tickets.notifications.notify_nuevo_ticket.delay') as mock_text_email, \
+             patch('apps.tickets.services.email_service.send_ticket_created_email') as mock_html_email:
+            response = client.post(reverse('ticket_create'), {
+                'unidad': inquilino.unidad_asignada.pk,
+                'titulo': 'Falla eléctrica en mi dormitorio',
+                'descripcion': 'La luz de mi cuarto parpadea y hace un ruido extraño desde hace días.',
+            })
+
+        assert response.status_code == 302
+        ticket = Ticket.objects.get(inquilino=inquilino)
+        # En este punto la IA todavía no corrió: valores por defecto del modelo.
+        assert ticket.estado == TicketStatus.CREADO_PENDIENTE_IA
+        assert ticket.categoria == TicketCategory.OTRO
+        assert ticket.prioridad == TicketPriority.MEDIA
+
+        mock_analyze.assert_called_once()
+        mock_text_email.assert_not_called()
+        mock_html_email.assert_not_called()
+
+    def test_pendiente_validacion_sends_notifications_with_final_classification(self):
+        inquilino = _make_inquilino_con_unidad(email='residente2@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño desde hace días.',
+        )
+        assert ticket.categoria == TicketCategory.OTRO
+        assert ticket.prioridad == TicketPriority.MEDIA
+
+        # Simula lo que hace _run_ticket_analysis: clasifica y luego transiciona.
+        ticket.categoria = TicketCategory.ELECTRICIDAD
+        ticket.prioridad = TicketPriority.ALTA
+        ticket.save(update_fields=['categoria', 'prioridad'])
+
+        with patch('apps.tickets.notifications.notify_nuevo_ticket.delay') as mock_text_email, \
+             patch('apps.tickets.services.email_service.send_ticket_created_email') as mock_html_email:
+            transition_ticket(ticket, nuevo_estado=TicketStatus.PENDIENTE_VALIDACION, actor_role='SYSTEM')
+
+        mock_text_email.assert_called_once_with(ticket.pk)
+        mock_html_email.assert_called_once_with(ticket.pk)
+
+        ticket.refresh_from_db()
+        assert ticket.categoria == TicketCategory.ELECTRICIDAD
+        assert ticket.prioridad == TicketPriority.ALTA
+
+
+def _make_tecnico_con_horario(email='tecnico@test.com'):
+    tecnico = CustomUser.objects.create_user(
+        email=email, password='clave12345', first_name='Gabriel', last_name='Jurado',
+        role=CustomUser.Roles.TECNICO,
+    )
+    # Horario amplio los 7 días para no depender de en qué día de la
+    # semana caiga "mañana" al correr el test.
+    for dia in range(7):
+        HorarioTrabajo.objects.create(
+            tecnico=tecnico, dia_semana=dia,
+            hora_inicio='08:00', hora_fin='18:00',
+        )
+    return tecnico
+
+
+@pytest.mark.django_db
+class TestInquilinoScheduleView:
+    """Regresión: al agendar, el ticket quedaba en ASIGNADO pero con
+    fecha_programada/hora_programada_inicio/hora_programada_fin en None
+    (confirmado en la base de datos real: TKT-0001). La causa era que
+    form.save(commit=False) devuelve la MISMA instancia de `ticket`, así
+    que el ticket.refresh_from_db() posterior borraba esos valores antes
+    de poder persistirlos — y como quedaban en None, ningún otro ticket
+    con el mismo técnico detectaba el conflicto de horario.
+    """
+
+    def test_scheduling_persists_fecha_y_hora_not_none(self):
+        tecnico = _make_tecnico_con_horario()
+        inquilino = _make_inquilino_con_unidad()
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,  # duración 3h
+            tecnico=tecnico,
+        )
+        transition_ticket(ticket, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
+        transition_ticket(ticket, nuevo_estado=TicketStatus.PENDIENTE_VALIDACION, actor_role='SYSTEM')
+        transition_ticket(ticket, nuevo_estado=TicketStatus.APROBADO, actor_role='ADMIN')
+
+        fecha = timezone.localdate() + timedelta(days=7)
+        client = Client()
+        client.force_login(inquilino)
+
+        with patch('apps.tickets.services.email_service.send_ticket_scheduled_email'):
+            response = client.post(
+                reverse('ticket_schedule', kwargs={'pk': ticket.pk}),
+                {
+                    'fecha_programada': fecha.isoformat(),
+                    'hora_programada_inicio': '09:00',
+                },
+            )
+
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.ASIGNADO
+        # Antes del fix, estos tres quedaban en None a pesar de que el
+        # historial ya mostraba el texto con la fecha/hora correctas.
+        assert ticket.fecha_programada == fecha
+        assert ticket.hora_programada_inicio.strftime('%H:%M') == '09:00'
+        assert ticket.hora_programada_fin.strftime('%H:%M') == '12:00'  # ALTA = 3h
+
+    def test_other_ticket_sees_the_slot_as_occupied(self):
+        """El escenario reportado: un segundo ticket con el mismo técnico
+        debe ver el horario ya agendado como ocupado, no como libre."""
+        tecnico = _make_tecnico_con_horario(email='tecnico2@test.com')
+        inquilino_a = _make_inquilino_con_unidad(email='residente_a@test.com')
+        fecha = timezone.localdate() + timedelta(days=7)
+
+        ticket_a = Ticket.objects.create(
+            inquilino=inquilino_a,
+            unidad=inquilino_a.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,
+            tecnico=tecnico,
+        )
+        transition_ticket(ticket_a, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
+        transition_ticket(ticket_a, nuevo_estado=TicketStatus.PENDIENTE_VALIDACION, actor_role='SYSTEM')
+        transition_ticket(ticket_a, nuevo_estado=TicketStatus.APROBADO, actor_role='ADMIN')
+
+        client = Client()
+        client.force_login(inquilino_a)
+        with patch('apps.tickets.services.email_service.send_ticket_scheduled_email'):
+            client.post(
+                reverse('ticket_schedule', kwargs={'pk': ticket_a.pk}),
+                {'fecha_programada': fecha.isoformat(), 'hora_programada_inicio': '09:00'},
+            )
+
+        # Ticket A agendado 09:00-12:00. Un segundo ticket (otro inquilino,
+        # mismo técnico, prioridad MEDIA → 2h) consulta la disponibilidad
+        # de ese mismo día.
+        bloques = get_hour_blocks_for_day(tecnico, fecha)
+        estados_por_hora = {b['hora_inicio'].strftime('%H:%M'): b['estado'] for b in bloques}
+        assert estados_por_hora['09:00'] == 'ocupado'
+        assert estados_por_hora['10:00'] == 'ocupado'
+        assert estados_por_hora['11:00'] == 'ocupado'
+
+        grupos_2h = find_consecutive_free_blocks(bloques, cantidad=2)
+        horas_inicio_libres = {g[0]['hora_inicio'].strftime('%H:%M') for g in grupos_2h}
+        # Ninguno de estos slots debería ofrecerse: todos se solapan con 09:00-12:00.
+        assert '08:00' not in horas_inicio_libres
+        assert '09:00' not in horas_inicio_libres
+        assert '10:00' not in horas_inicio_libres
+        assert '11:00' not in horas_inicio_libres

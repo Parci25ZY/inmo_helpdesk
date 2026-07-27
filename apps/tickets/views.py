@@ -428,26 +428,13 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
             actor=self.request.user,
             nota='Ticket creado por el residente.',
         )
-        # Aviso al administrador vía n8n (async)
-        try:
-            from .notifications import notify_nuevo_ticket
-            notify_nuevo_ticket.delay(self.object.pk)
-        except Exception:
-            pass
-
-        # Notificación in-app para admin(s)
-        try:
-            from .services.notify import notify_ticket_created
-            notify_ticket_created(self.object)
-        except Exception:
-            pass
-
-        # Correo SMTP al admin
-        try:
-            from .services.email_service import send_ticket_created_email
-            send_ticket_created_email(self.object.pk)
-        except Exception:
-            pass
+        # Nota: las notificaciones de "nuevo ticket" a admin (in-app + los dos
+        # correos) NO se disparan aquí. En este punto categoria/prioridad
+        # todavía son el default del modelo (OTRO/MEDIA) porque la IA aún no
+        # analizó el ticket — se disparan desde
+        # notify.py::_on_pendiente_validacion, que corre después de que la IA
+        # (o su fallback) ya fijó los valores reales. Antes se enviaban aquí y
+        # mostraban categoría/prioridad incorrectas.
 
         # Evidencias subidas en el mismo formulario
         for f in self.request.FILES.getlist('evidencias'):
@@ -577,22 +564,26 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, 'Por favor selecciona una fecha y hora válidas.')
             return redirect('ticket_detail', pk=pk)
 
-        # Calcular los campos de horario en memoria, SIN guardar todavía.
-        # El save() se realiza SOLO si la transición tiene éxito, evitando
-        # el estado inconsistente: ticket APROBADO con fecha ya persistida.
-        ticket_datos = form.save(commit=False)
+        # Los tres valores se guardan en variables independientes — NO en
+        # `ticket` ni en lo que devuelva form.save(commit=False), que es la
+        # MISMA instancia de `ticket` (no una copia). Si se leyeran desde ahí,
+        # el ticket.refresh_from_db() de más abajo los borraría antes de
+        # poder persistirlos (bug real detectado: los tickets quedaban en
+        # ASIGNADO con fecha_programada/hora_programada_inicio/fin en None).
+        fecha_programada = form.cleaned_data.get('fecha_programada')
+        hora_programada_inicio = form.cleaned_data.get('hora_programada_inicio')
+        hora_programada_fin = form.cleaned_data.get('hora_programada_fin')
 
-        # Guard: asegurarse de que los campos de horario llegaron con valor
-        if not ticket_datos.fecha_programada or not ticket_datos.hora_programada_inicio:
+        if not fecha_programada or not hora_programada_inicio:
             messages.error(request, 'Debes seleccionar una fecha y hora de inicio válidas.')
             return redirect('ticket_detail', pk=pk)
 
         # Calcular hora_fin automáticamente si no fue proporcionada
-        if not ticket_datos.hora_programada_fin:
+        if not hora_programada_fin:
             from datetime import datetime, timedelta
-            duracion = get_visit_duration(ticket_datos.prioridad)
-            inicio_dt = datetime.combine(ticket_datos.fecha_programada, ticket_datos.hora_programada_inicio)
-            ticket_datos.hora_programada_fin = (inicio_dt + timedelta(hours=duracion)).time()
+            duracion = get_visit_duration(ticket.prioridad)
+            inicio_dt = datetime.combine(fecha_programada, hora_programada_inicio)
+            hora_programada_fin = (inicio_dt + timedelta(hours=duracion)).time()
 
         try:
             transition_ticket(
@@ -602,9 +593,9 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
                 actor_role='INQUILINO',
                 nota=(
                     f'Visita agendada por el inquilino: '
-                    f'{ticket_datos.fecha_programada.strftime("%d/%m/%Y")} '
-                    f'de {ticket_datos.hora_programada_inicio.strftime("%H:%M")} '
-                    f'a {ticket_datos.hora_programada_fin.strftime("%H:%M")}.'
+                    f'{fecha_programada.strftime("%d/%m/%Y")} '
+                    f'de {hora_programada_inicio.strftime("%H:%M")} '
+                    f'a {hora_programada_fin.strftime("%H:%M")}.'
                 ),
             )
         except WorkloadExceededError as exc:
@@ -615,18 +606,19 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             return redirect('ticket_detail', pk=pk)
 
         # La transición fue exitosa: persistir campos de horario.
-        # Refrescamos desde BD para tener el estado actualizado por transition_ticket,
-        # luego escribimos solo los tres campos de horario.
+        # Refrescamos desde BD para tener el estado actualizado por
+        # transition_ticket, luego escribimos los tres campos de horario
+        # desde las variables independientes (no desde `ticket`).
         ticket.refresh_from_db()
-        ticket.fecha_programada = ticket_datos.fecha_programada
-        ticket.hora_programada_inicio = ticket_datos.hora_programada_inicio
-        ticket.hora_programada_fin = ticket_datos.hora_programada_fin
+        ticket.fecha_programada = fecha_programada
+        ticket.hora_programada_inicio = hora_programada_inicio
+        ticket.hora_programada_fin = hora_programada_fin
         ticket.save(update_fields=['fecha_programada', 'hora_programada_inicio', 'hora_programada_fin'])
 
         # Mensaje automático de confirmación en el chat
-        fecha_str = ticket.fecha_programada.strftime('%d/%m/%Y') if ticket.fecha_programada else ticket_datos.fecha_programada.strftime('%d/%m/%Y')
-        inicio_str = ticket.hora_programada_inicio.strftime('%H:%M') if ticket.hora_programada_inicio else ticket_datos.hora_programada_inicio.strftime('%H:%M')
-        fin_str = ticket.hora_programada_fin.strftime('%H:%M') if ticket.hora_programada_fin else ticket_datos.hora_programada_fin.strftime('%H:%M')
+        fecha_str = fecha_programada.strftime('%d/%m/%Y')
+        inicio_str = hora_programada_inicio.strftime('%H:%M')
+        fin_str = hora_programada_fin.strftime('%H:%M')
 
         MensajeTicket.objects.create(
             ticket=ticket,

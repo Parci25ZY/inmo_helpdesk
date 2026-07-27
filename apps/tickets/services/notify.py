@@ -8,14 +8,22 @@ Mapa de notificaciones:
 Transición                  │ Destinatario  │ Tipo    │ Mensaje
 ────────────────────────────┼───────────────┼─────────┼────────────
 → PENDIENTE_VALIDACION      │ Admin(s)      │ WARNING │ Requiere validación
+                            │               │         │ (+ correo HTML y correo
+                            │               │         │ de texto de "nuevo ticket")
 → APROBADO                  │ Inquilino     │ SUCCESS │ Aprobado, agenda tu visita
 → ASIGNADO                  │ Técnico       │ INFO    │ Auto-asignado / agendado
 → EN_CAMINO                 │ Inquilino     │ INFO    │ Técnico en camino
 → EN_PROGRESO               │ Inquilino     │ INFO    │ Trabajo en progreso
 → RESUELTO                  │ Inquilino+Adm │ SUCCESS │ Ticket resuelto
 → CANCELADO                 │ Inquilino     │ ERROR   │ Ticket cancelado
-Nuevo ticket creado         │ Admin(s)      │ WARNING │ Nuevo ticket creado
 Nuevo mensaje               │ Contrapartida │ INFO    │ Nuevo mensaje
+
+Nota: las notificaciones de "nuevo ticket" (in-app + los dos correos) se
+disparan aquí, en PENDIENTE_VALIDACION, y no en el momento de creación del
+ticket — para entonces la IA (o su fallback) ya fijó categoria/prioridad
+reales. Antes se enviaban al crear el ticket y mostraban siempre los
+valores por defecto del modelo (OTRO/MEDIA) en vez de la clasificación
+real.
 """
 
 from __future__ import annotations
@@ -141,7 +149,14 @@ def notify_new_message(ticket: Ticket, *, autor):
 
 
 def _on_pendiente_validacion(ticket: Ticket, *, actor=None):
-    """→ PENDIENTE_VALIDACION: notificar admin(s) que requiere validación."""
+    """→ PENDIENTE_VALIDACION: notificar admin(s) que requiere validación.
+
+    Este es también el punto donde se avisa por primera vez a los admins que
+    existe un ticket nuevo (in-app + los dos correos) — se hace aquí y no al
+    crear el ticket porque recién en este punto `ticket.categoria` y
+    `ticket.prioridad` reflejan la clasificación real de la IA (o el
+    resultado de su fallback), no los valores por defecto del modelo.
+    """
     admins = _get_admins()
     if actor:
         admins = admins.exclude(pk=actor.pk)
@@ -152,6 +167,18 @@ def _on_pendiente_validacion(ticket: Ticket, *, actor=None):
         descripcion=ticket.descripcion[:200] if ticket.descripcion else '',
         tipo_alerta=TipoAlerta.WARNING,
     )
+
+    try:
+        from apps.tickets.notifications import notify_nuevo_ticket
+        notify_nuevo_ticket.delay(ticket.pk)
+    except Exception:
+        logger.exception('Error encolando correo de texto de nuevo ticket %s.', ticket.pk)
+
+    try:
+        from apps.tickets.services.email_service import send_ticket_created_email
+        send_ticket_created_email(ticket.pk)
+    except Exception:
+        logger.exception('Error enviando correo HTML de nuevo ticket %s.', ticket.pk)
 
 
 def _on_aprobado(ticket: Ticket, *, actor=None):
