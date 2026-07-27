@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Count, Q
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import (
@@ -103,7 +103,15 @@ class EdificioDeleteView(AdminRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         nombre = self.object.nombre
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f'No se puede eliminar "{nombre}": tiene unidades con tickets '
+                'vinculados. Márcalo como inactivo en su lugar para conservar el historial.',
+            )
+            return redirect('edificio_list')
         messages.success(self.request, f'Edificio "{nombre}" eliminado.')
         return response
 
@@ -197,6 +205,14 @@ class UnidadDeleteView(AdminRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         etiqueta = str(self.object)
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f'No se puede eliminar "{etiqueta}": tiene tickets vinculados. '
+                'Márcala como inactiva en su lugar para conservar el historial.',
+            )
+            return redirect('unidad_list')
         messages.success(self.request, f'Unidad "{etiqueta}" eliminada.')
         return response

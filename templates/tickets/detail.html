@@ -358,8 +358,8 @@
                     <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-amber-400 border-b border-zinc-700 pb-2 mb-4">Acciones disponibles</p>
                     <div class="space-y-2">
                         {% for destino, label in transiciones_con_label %}
-                            {% if destino == 'ASIGNADO' and request.user.is_admin %}{% comment %}Skip — la asignación es vía validate{% endcomment %}
-                            {% elif destino == 'RESUELTO' and puede_resolver %}{% comment %}Skip — usar form de resolución{% endcomment %}
+                            {% if destino == 'ASIGNADO' %}{% comment %}Skip — la asignación es vía el picker de horario del inquilino{% endcomment %}
+                            {% elif destino == 'RESUELTO' %}{% comment %}Skip — usar form de resolución con evidencia{% endcomment %}
                             {% else %}
                             <form method="POST" action="{% url 'ticket_transition' ticket.pk destino %}">
                                 {% csrf_token %}

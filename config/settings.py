@@ -18,7 +18,7 @@ if not SECRET_KEY:
         'La variable de entorno SECRET_KEY es obligatoria. '
         'Genera una con: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
     )
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django_htmx',
     'django_celery_results',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'crispy_forms',
     'crispy_tailwind',
 
@@ -98,7 +99,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME', 'inmo_db'),
         'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'mundo123'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', '127.0.0.1'),
         'PORT': os.getenv('DB_PORT', '5432'),
     }
@@ -139,7 +140,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Inteligencia Artificial
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_CHAT_MODEL = os.getenv('GEMINI_CHAT_MODEL', 'gemini-2.5-flash')
+GEMINI_CHAT_MODEL = os.getenv('GEMINI_CHAT_MODEL', 'gemini-flash-latest')
 GEMINI_EMBEDDING_MODEL = os.getenv('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')
 
 # Django REST Framework
@@ -154,6 +155,14 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/minute',
+        'user': '120/minute',
+    },
 }
 
 # JWT (simplejwt)
@@ -161,7 +170,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_ACCESS_MINUTES', '60'))),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_DAYS', '7'))),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
@@ -199,3 +208,51 @@ NPM_BIN_PATH = os.getenv('NPM_BIN_PATH') or shutil.which('npm') or "/usr/bin/npm
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Endurecimiento para producción — no afecta el entorno de desarrollo
+# porque todas estas condiciones dependen de DEBUG=False (en .env local
+# DEBUG=True), y SECURE_SSL_REDIRECT/HSTS solo deben activarse detrás de
+# un proxy/servidor que ya termine TLS.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '3600'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# Logging — antes no había ninguna configuración explícita, así que los
+# `logger.exception`/`logger.warning` de los servicios (chat.py, rag.py,
+# tickets/views.py, etc.) no quedaban visibles en ningún lado más allá de
+# la consola por defecto de Django. Handler de consola simple, suficiente
+# para desarrollo y para que un servicio de logs (systemd/docker/etc.)
+# capture stdout en producción.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {name} — {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}

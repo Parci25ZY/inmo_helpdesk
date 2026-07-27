@@ -14,7 +14,7 @@ from google.genai import types
 logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL = getattr(settings, 'GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')
-CHAT_MODEL = getattr(settings, 'GEMINI_CHAT_MODEL', 'gemini-2.0-flash')
+CHAT_MODEL = getattr(settings, 'GEMINI_CHAT_MODEL', 'gemini-flash-latest')
 
 
 def _client() -> genai.Client:

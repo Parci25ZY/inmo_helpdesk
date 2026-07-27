@@ -15,6 +15,7 @@ Todas las transiciones de estado pasan por
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, timedelta
 
 from django.contrib import messages
@@ -59,6 +60,8 @@ from .services.availability import (
     get_technician_availability_multi_day,
     get_visit_duration,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # Labels legibles para cada transición — reemplaza el enum crudo en la UI
@@ -470,7 +473,7 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
                 from apps.ai_agent.tasks import _run_ticket_analysis
                 _run_ticket_analysis(self.object.pk)
             except Exception:
-                pass  # Sin Gemini ni Celery: el admin avanza manualmente
+                logger.exception('Análisis IA falló para ticket %s (Celery y fallback síncrono)', self.object.pk)
         messages.success(self.request, f'Ticket {self.object.codigo} creado. Pronto será analizado.')
         return response
 
@@ -566,7 +569,7 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             from .notifications import notify_ticket_aprobado
             notify_ticket_aprobado.apply_async(args=[ticket.pk], countdown=2)
         except Exception:
-            pass  # Sin Celery: el inquilino verá el estado al entrar
+            logger.exception('notify_ticket_aprobado falló para ticket %s', ticket.pk)
 
         # Correos SMTP: al residente (agendar cita) y al técnico (detalles)
         try:
@@ -577,7 +580,7 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             send_ticket_approved_resident_email(ticket.pk)
             send_ticket_approved_tech_email(ticket.pk)
         except Exception:
-            pass
+            logger.exception('Envío de correos de aprobación falló para ticket %s', ticket.pk)
 
         messages.success(
             self.request,
@@ -683,7 +686,7 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             from .services.email_service import send_ticket_scheduled_email
             send_ticket_scheduled_email(ticket.pk)
         except Exception:
-            pass
+            logger.exception('Envío de correo de agenda falló para ticket %s', ticket.pk)
 
         messages.success(
             request,
@@ -695,11 +698,33 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
 # ── Transiciones genéricas (Técnico/Admin) ─────────────────────────────
 
 class TicketTransitionView(LoginRequiredMixin, View):
-    """Endpoint POST para mover un ticket a un estado destino concreto."""
+    """Endpoint POST para mover un ticket a un estado destino concreto.
+
+    Reservado para transiciones "simples" que no requieren datos
+    adicionales del actor. APROBADO→ASIGNADO y EN_PROGRESO→RESUELTO
+    exigen datos que solo se capturan en sus formularios dedicados
+    (:class:`InquilinoScheduleView`, :class:`TicketResolveView`) — un
+    inquilino podía llegar antes a ASIGNADO por esta vía genérica sin
+    horario, y un técnico a RESUELTO sin evidencia, así que esas dos
+    transiciones se bloquean aquí y se redirige al flujo correcto.
+    """
+
+    _REQUIERE_FORMULARIO_DEDICADO = {
+        (TicketStatus.APROBADO, TicketStatus.ASIGNADO),
+        (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO),
+    }
 
     def post(self, request: HttpRequest, pk: int, destino: str) -> HttpResponse:
         ticket = get_object_or_404(Ticket, pk=pk)
         user = request.user
+
+        if (ticket.estado, destino) in self._REQUIERE_FORMULARIO_DEDICADO:
+            messages.error(
+                request,
+                'Esta transición requiere información adicional; usa el '
+                'formulario correspondiente en la ficha del ticket.',
+            )
+            return redirect('ticket_detail', pk=pk)
 
         # Reglas de pertenencia
         if user.is_tecnico and ticket.tecnico_id != user.id:
@@ -790,7 +815,7 @@ class TicketResolveView(RoleRequiredMixin, View):
             send_ticket_resolved_email(ticket.pk)
             send_ticket_resolved_admin_email(ticket.pk)
         except Exception:
-            pass
+            logger.exception('Envío de correos de resolución falló para ticket %s', ticket.pk)
 
         messages.success(request, f'Ticket {ticket.codigo} marcado como resuelto.')
         return redirect('ticket_detail', pk=pk)
@@ -831,7 +856,7 @@ class MensajeCreateView(LoginRequiredMixin, View):
                 from .services.notify import notify_new_message
                 notify_new_message(ticket, autor=user)
             except Exception:
-                pass
+                logger.exception('notify_new_message falló para ticket %s', ticket.pk)
 
         if request.headers.get('HX-Request'):
             return render(request, 'tickets/partials/_mensajes.html', {

@@ -200,3 +200,73 @@ class TestInquilinoScheduleView:
         assert '09:00' not in horas_inicio_libres
         assert '10:00' not in horas_inicio_libres
         assert '11:00' not in horas_inicio_libres
+
+
+@pytest.mark.django_db
+class TestTicketTransitionViewBlocksGenericBypass:
+    """Regresión: `TicketTransitionView` es un endpoint genérico
+    (`/tickets/<pk>/transicion/<destino>/`) y `_ROLE_RULES` permite a
+    INQUILINO ejecutar APROBADO→ASIGNADO — pero esa transición solo debe
+    hacerse vía `InquilinoScheduleView`, que exige fecha/hora. La plantilla
+    ocultaba el botón genérico solo para el admin (`request.user.is_admin`),
+    así que un inquilino SÍ veía y podía enviar el formulario genérico,
+    dejando el ticket en ASIGNADO con fecha_programada/hora_programada_inicio
+    en None (el mismo bug de datos que TestInquilinoScheduleView, pero
+    alcanzable directamente sin pasar por el schedule picker).
+    """
+
+    def test_inquilino_cannot_reach_asignado_via_generic_transition_endpoint(self):
+        tecnico = _make_tecnico_con_horario(email='tecnico3@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente3@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,
+            tecnico=tecnico,
+        )
+        transition_ticket(ticket, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
+        transition_ticket(ticket, nuevo_estado=TicketStatus.PENDIENTE_VALIDACION, actor_role='SYSTEM')
+        transition_ticket(ticket, nuevo_estado=TicketStatus.APROBADO, actor_role='ADMIN')
+
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.ASIGNADO}),
+        )
+
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        # El bloqueo debe impedir la transición por completo, sin dejar
+        # el ticket a medio agendar.
+        assert ticket.estado == TicketStatus.APROBADO
+        assert ticket.fecha_programada is None
+        assert ticket.hora_programada_inicio is None
+
+    def test_tecnico_cannot_reach_resuelto_via_generic_transition_endpoint(self):
+        tecnico = _make_tecnico_con_horario(email='tecnico4@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente4@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,
+            tecnico=tecnico,
+            estado=TicketStatus.EN_PROGRESO,
+        )
+
+        client = Client()
+        client.force_login(tecnico)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.RESUELTO}),
+        )
+
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        # Sin este bloqueo, el ticket pasaría a RESUELTO sin evidencia
+        # ni notas de resolución (solo exigidas por TicketResolveView).
+        assert ticket.estado == TicketStatus.EN_PROGRESO

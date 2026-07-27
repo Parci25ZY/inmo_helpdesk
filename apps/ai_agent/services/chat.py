@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.utils import timezone
 
 from apps.ai_agent.models import ChatMessage, ChatSession
 
 from .gemini import embed_query, generate_chat_response
 from .rag import retrieve_relevant_chunks
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """Eres el asistente virtual de InmoHelpdesk, especializado en mantenimiento
 inmobiliario para inquilinos de edificios y condominios en Ecuador.
@@ -181,6 +185,10 @@ Responde según las reglas del sistema."""
             sesion.save(update_fields=['actualizado_en'])
 
     except Exception as exc:
+        logger.exception(
+            'process_user_message falló para sesion=%s mensaje=%s',
+            sesion.pk, asistente_msg.pk,
+        )
         asistente_msg.contenido = (
             'Hubo un error al procesar tu consulta. '
             'Por favor intenta de nuevo o reporta la incidencia directamente.'
