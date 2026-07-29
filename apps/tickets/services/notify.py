@@ -71,17 +71,18 @@ def notify_transition(ticket: Ticket, *, estado_anterior: str, nuevo_estado: str
 
 
 def notify_new_message(ticket: Ticket, *, autor):
+    # El chat es exclusivamente inquilino <-> técnico asignado (ver
+    # MensajeCreateView.puede); el admin nunca participa, así que no
+    # debe notificarse aquí.
     destinatarios = []
 
     if hasattr(autor, 'role'):
         if autor.role == CustomUser.Roles.INQUILINO:
             if ticket.tecnico:
                 destinatarios.append(ticket.tecnico)
-            destinatarios.extend(list(_get_admins()))
         elif autor.role == CustomUser.Roles.TECNICO:
             if ticket.inquilino:
                 destinatarios.append(ticket.inquilino)
-            destinatarios.extend(list(_get_admins()))
         else:
             if ticket.inquilino:
                 destinatarios.append(ticket.inquilino)

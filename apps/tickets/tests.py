@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import CustomUser, HorarioTrabajo
 from apps.properties.models import Edificio, Unidad
-from apps.tickets.models import Ticket, TicketCategory, TicketPriority, TicketStatus
+from apps.tickets.models import Notificacion, Ticket, TicketCategory, TicketPriority, TicketStatus
 from apps.tickets.services.availability import find_consecutive_free_blocks, get_hour_blocks_for_day
 from apps.tickets.services.transitions import transition_ticket
 
@@ -436,3 +436,60 @@ class TestInquilinoSelfCancel:
         assert response.status_code == 302
         ticket.refresh_from_db()
         assert ticket.estado == TicketStatus.CANCELADO
+
+
+@pytest.mark.django_db
+class TestChatMessageDoesNotNotifyAdmin:
+    """Regresión: `notify_new_message` agregaba siempre a `_get_admins()`
+    como destinatario sin importar quién escribiera, pero el chat de un
+    ticket (`MensajeCreateView.puede`) es exclusivamente entre el
+    inquilino y el técnico asignado — el admin nunca puede enviar ni
+    debería figurar ahí. Con eso, cada mensaje del chat le generaba al
+    admin una campanita de "nuevo mensaje" sobre una conversación en la
+    que no participa.
+    """
+
+    def _ticket_asignado(self):
+        tecnico = _make_tecnico_con_horario(email='tecnico-chat@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente-chat@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,
+            tecnico=tecnico,
+            estado=TicketStatus.ASIGNADO,
+        )
+        return ticket, inquilino, tecnico
+
+    def test_inquilino_message_notifies_tecnico_but_not_admin(self):
+        admin = _make_admin(email='admin-chat@test.com')
+        ticket, inquilino, tecnico = self._ticket_asignado()
+
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_mensaje_create', kwargs={'pk': ticket.pk}),
+            {'mensaje': 'Hola, ¿a qué hora llega el técnico?'},
+        )
+
+        assert response.status_code == 302
+        assert Notificacion.objects.filter(usuario=tecnico, ticket=ticket).exists()
+        assert not Notificacion.objects.filter(usuario=admin, ticket=ticket).exists()
+
+    def test_tecnico_message_notifies_inquilino_but_not_admin(self):
+        admin = _make_admin(email='admin-chat2@test.com')
+        ticket, inquilino, tecnico = self._ticket_asignado()
+
+        client = Client()
+        client.force_login(tecnico)
+        response = client.post(
+            reverse('ticket_mensaje_create', kwargs={'pk': ticket.pk}),
+            {'mensaje': 'Llego en 20 minutos.'},
+        )
+
+        assert response.status_code == 302
+        assert Notificacion.objects.filter(usuario=inquilino, ticket=ticket).exists()
+        assert not Notificacion.objects.filter(usuario=admin, ticket=ticket).exists()
