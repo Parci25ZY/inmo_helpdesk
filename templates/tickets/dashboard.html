@@ -87,6 +87,7 @@
                             <p class="text-6xl font-black text-amber-600 tracking-tighter">{{ pendientes }}</p>
                             <p class="text-sm font-medium text-amber-700/60 leading-tight">tickets<br>en cola</p>
                         </div>
+                        {% include 'tickets/partials/_kpi_sparkline.html' with tendencia=kpi_tendencias.pendientes stroke='stroke-amber-500' fill='fill-amber-500' etiqueta='creados' %}
                     </div>
                 </article>
                 <!-- En Proceso -->
@@ -101,6 +102,7 @@
                             <p class="text-6xl font-black text-indigo-600 tracking-tighter">{{ en_progreso }}</p>
                             <p class="text-sm font-medium text-indigo-700/60 leading-tight">tickets<br>atendiéndose</p>
                         </div>
+                        {% include 'tickets/partials/_kpi_sparkline.html' with tendencia=kpi_tendencias.en_progreso stroke='stroke-indigo-500' fill='fill-indigo-500' etiqueta='iniciados' %}
                     </div>
                 </article>
                 <!-- Resueltos -->
@@ -117,6 +119,7 @@
                             <p class="text-6xl font-black text-emerald-700 tracking-tighter">{{ kpi_resueltos }}</p>
                             <p class="text-sm font-medium text-emerald-600 leading-tight">tickets<br>completados</p>
                         </div>
+                        {% include 'tickets/partials/_kpi_sparkline.html' with tendencia=kpi_tendencias.resueltos stroke='stroke-emerald-500' fill='fill-emerald-500' etiqueta='resueltos' %}
                     </div>
                 </article>
             </div>

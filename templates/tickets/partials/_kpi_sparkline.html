@@ -1,0 +1,27 @@
+{% comment %}
+Uso: {% include 'tickets/partials/_kpi_sparkline.html' with tendencia=kpi_tendencias.pendientes stroke='stroke-amber-500' fill='fill-amber-500' etiqueta='creados' %}
+`tendencia` viene de DashboardView._tendencias_semanales().
+
+`etiqueta` (creados/iniciados/resueltos) es a propósito un verbo de FLUJO,
+no del estado que muestra el número grande de la tarjeta: el número grande
+es una foto del momento (cuántos hay ahora mismo en ese estado) y esta
+serie es actividad de la semana (cuántos entraron a ese estado). Un ticket
+puede haber entrado y ya haber avanzado, así que ambos números no tienen
+por qué coincidir — de ahí que el texto nombre la acción en vez de decir
+"vs. la cifra de arriba", para no insinuar que deberían cuadrar.
+{% endcomment %}
+{% if tendencia %}
+<div class="mt-4 flex items-start gap-3">
+    <svg viewBox="0 0 104 32" class="w-16 h-5 shrink-0 mt-0.5" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="{{ tendencia.polyline }}" fill="none" class="{{ stroke }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+        <circle cx="{{ tendencia.ultimo_x }}" cy="{{ tendencia.ultimo_y }}" r="3" class="{{ fill }}" />
+    </svg>
+    <div class="text-xs leading-tight max-w-[9.5rem]">
+        <p class="font-semibold {{ tendencia.color }}">{{ tendencia.total_actual }} {{ etiqueta }} esta semana</p>
+        <p class="text-zinc-400 mt-0.5">
+            {% if tendencia.delta > 0 %}▲{% elif tendencia.delta < 0 %}▼{% else %}—{% endif %}
+            {{ tendencia.delta|stringformat:"+d" }} vs. semana pasada
+        </p>
+    </div>
+</div>
+{% endif %}
