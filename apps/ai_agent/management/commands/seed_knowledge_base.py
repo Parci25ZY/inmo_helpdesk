@@ -1,4 +1,3 @@
-"""Comando para poblar la base de conocimiento RAG con FAQs de mantenimiento."""
 
 from django.core.management.base import BaseCommand
 

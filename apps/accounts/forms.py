@@ -4,7 +4,6 @@ from .models import CustomUser
 
 
 class RequiredNameMixin:
-    """Exige nombre y apellido no vacíos aunque el modelo los declare blank=True."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,8 +39,7 @@ class CustomAuthenticationForm(AuthenticationForm):
     }))
 
 class UserEditForm(RequiredNameMixin, UserChangeForm):
-    """Formulario para editar usuarios existentes en el panel administrativo"""
-    password = None  # Ocultar el campo de contraseña en la edición directa
+    password = None
 
     especialidades = forms.MultipleChoiceField(
         choices=CustomUser.Especialidad.choices,
@@ -59,7 +57,6 @@ class UserEditForm(RequiredNameMixin, UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Pre-populate especialidades from M2M
         if self.instance and self.instance.pk and self.instance.is_tecnico:
             self.fields['especialidades'].initial = list(
                 self.instance.especialidades_tecnico
@@ -163,7 +160,6 @@ _SELECT_CLASS = (
 )
 
 class UserCreateForm(RequiredNameMixin, UserCreationForm):
-    """Formulario para crear nuevos usuarios en el panel administrativo"""
 
     especialidades = forms.MultipleChoiceField(
         choices=CustomUser.Especialidad.choices,
@@ -175,7 +171,6 @@ class UserCreateForm(RequiredNameMixin, UserCreationForm):
         help_text='Selecciona las especialidades del técnico.',
     )
 
-    # Horarios de trabajo — campos dinámicos procesados en la vista
     horario_dias = forms.CharField(
         required=False,
         widget=forms.HiddenInput(),
@@ -239,7 +234,6 @@ class UserCreateForm(RequiredNameMixin, UserCreationForm):
         from apps.accounts.models import TecnicoEspecialidad
 
         especialidades = self.cleaned_data.get('especialidades', [])
-        # Clear existing M2M
         TecnicoEspecialidad.objects.filter(tecnico=user).delete()
         for i, esp in enumerate(especialidades):
             TecnicoEspecialidad.objects.create(
@@ -247,7 +241,6 @@ class UserCreateForm(RequiredNameMixin, UserCreationForm):
                 especialidad=esp,
                 es_principal=(i == 0),
             )
-        # Update legacy field with first specialty
         if especialidades:
             user.especialidad = especialidades[0]
             user.save(update_fields=['especialidad'])
@@ -265,7 +258,6 @@ class UserCreateForm(RequiredNameMixin, UserCreationForm):
         except (json.JSONDecodeError, TypeError):
             return
 
-        # Clear existing schedules
         HorarioTrabajo.objects.filter(tecnico=user).delete()
         for h in horarios:
             if h.get('hora_inicio') and h.get('hora_fin'):
@@ -288,12 +280,6 @@ _PROFILE_INPUT_CLASS = (
 
 
 class ProfileEditForm(RequiredNameMixin, forms.ModelForm):
-    """Formulario seguro para que el usuario edite su propio perfil.
-
-    Solo expone campos de información personal (nombre, email, teléfono).
-    No incluye role, is_active, is_staff ni especialidad para evitar
-    escalación de privilegios.
-    """
 
     class Meta:
         model = CustomUser

@@ -1,16 +1,3 @@
-"""Vistas del módulo Tickets.
-
-Implementan el ciclo de vida completo:
-  * Listado filtrado por rol.
-  * Detalle con timeline de historial y galería de evidencias.
-  * Creación por el inquilino.
-  * Validación administrativa (transición a ASIGNADO).
-  * Transiciones operativas del técnico.
-  * Subida de evidencias.
-
-Todas las transiciones de estado pasan por
-:func:`apps.tickets.services.transitions.transition_ticket`.
-"""
 
 from __future__ import annotations
 
@@ -21,6 +8,7 @@ from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models.functions import TruncDate
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -44,7 +32,7 @@ from .forms import (
     TicketResolutionForm,
     TicketTransitionForm,
 )
-from .models import EvidenciaTicket, MensajeTicket, Ticket, TicketPriority, TicketStatus
+from .models import EvidenciaTicket, HistorialEstado, MensajeTicket, Ticket, TicketPriority, TicketStatus
 from .services.transitions import (
     InvalidTransitionError,
     TransitionPermissionError,
@@ -64,7 +52,6 @@ from .services.availability import (
 logger = logging.getLogger(__name__)
 
 
-# Labels legibles para cada transición — reemplaza el enum crudo en la UI
 _TRANSITION_LABELS: dict[str, str] = {
     TicketStatus.ANALIZADO_POR_IA: 'Marcar como analizado',
     TicketStatus.PENDIENTE_VALIDACION: 'Enviar a validación',
@@ -78,13 +65,6 @@ _TRANSITION_LABELS: dict[str, str] = {
 
 
 def _errores_legibles(form) -> list[str]:
-    """Aplana los errores de un form a mensajes listos para ``messages.error``.
-
-    Las vistas de validación/reasignación responden con *redirect* al detalle
-    (no re-renderizan el form, porque ``detail.html`` necesita todo el contexto
-    de :class:`TicketDetailView`). Este helper conserva el detalle del error en
-    lugar de mostrar un genérico "datos inválidos".
-    """
     salida: list[str] = []
     for campo, errores in form.errors.items():
         etiqueta = (
@@ -95,14 +75,8 @@ def _errores_legibles(form) -> list[str]:
     return salida or ['Datos inválidos. Revisa el formulario.']
 
 
-# ── Mixins ──────────────────────────────────────────────────────────────
 
 class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Restringe acceso a vistas a un conjunto de roles.
-
-    Definir ``allowed_roles`` como tupla de strings (ADMIN/TECNICO/INQUILINO).
-    Los superusuarios siempre pasan.
-    """
 
     allowed_roles: tuple[str, ...] = ()
 
@@ -121,10 +95,8 @@ class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return redirect('dashboard')
 
 
-# ── Listado ─────────────────────────────────────────────────────────────
 
 class TicketListView(LoginRequiredMixin, ListView):
-    """Listado de tickets filtrado según rol del usuario."""
 
     model = Ticket
     template_name = 'tickets/list.html'
@@ -137,10 +109,10 @@ class TicketListView(LoginRequiredMixin, ListView):
             'inquilino', 'tecnico', 'unidad', 'unidad__edificio',
         )
         if user.is_admin:
-            pass  # Admin ve todo
+            pass
         elif user.is_tecnico:
             qs = qs.filter(tecnico=user)
-        else:  # Inquilino
+        else:
             qs = qs.filter(inquilino=user)
 
         estado = self.request.GET.get('estado', '').strip()
@@ -168,7 +140,6 @@ class TicketListView(LoginRequiredMixin, ListView):
         return qs.annotate(prioridad_orden=prioridad_orden).order_by('prioridad_orden', '-creado_en')
 
     def _base_scope(self):
-        """Queryset base filtrado por rol para KPIs (sin filtros de búsqueda)."""
         user = self.request.user
         qs = Ticket.objects.all()
         if user.is_tecnico:
@@ -182,7 +153,6 @@ class TicketListView(LoginRequiredMixin, ListView):
         user = self.request.user
         base_qs = self._base_scope()
 
-        # Una sola query con aggregate en vez de 4 count() separadas
         _estados_pendientes = (
             [TicketStatus.ASIGNADO] if user.is_tecnico else
             [TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.ANALIZADO_POR_IA,
@@ -219,7 +189,6 @@ class TicketListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-# ── Detalle ─────────────────────────────────────────────────────────────
 
 class TicketDetailView(LoginRequiredMixin, DetailView):
     model = Ticket
@@ -234,7 +203,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     def get_object(self, queryset=None):
         ticket = super().get_object(queryset)
         user = self.request.user
-        # Control de acceso fino: inquilino solo ve los suyos, técnico solo los asignados.
         if user.is_admin or user.is_superuser:
             return ticket
         if user.is_tecnico and ticket.tecnico_id == user.id:
@@ -250,7 +218,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         actor_role = 'ADMIN' if user.is_admin else ('TECNICO' if user.is_tecnico else 'INQUILINO')
         transiciones = list(allowed_transitions_for(ticket, role=actor_role))
 
-        # Contexto de pre-asignación para el admin
         tiene_preasignacion = (
             ticket.is_pendiente_validacion
             and ticket.ia_tecnico_sugerido is not None
@@ -267,7 +234,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
         duracion_visita = get_visit_duration(ticket.prioridad)
 
-        # ── Auto-agenda del inquilino (estado APROBADO) ────────────────
         puede_agendar = (
             ticket.is_aprobado
             and user.is_inquilino
@@ -288,18 +254,16 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
             hoy = timezone.localdate()
             for info in disponibilidad_raw:
-                # Buscar grupos de N bloques consecutivos libres
                 grupos = find_consecutive_free_blocks(
                     info.get('bloques', []),
                     duracion_visita,
                 )
-                # Cada grupo → un slot válido (primer bloque inicio, último bloque fin)
                 slots_validos = []
                 for grupo in grupos:
                     slots_validos.append({
                         'hora_inicio': grupo[0]['hora_inicio'],
                         'hora_fin': grupo[-1]['hora_fin'],
-                        'bloques': grupo,  # los bloques individuales
+                        'bloques': grupo,
                     })
 
                 info['slots_validos'] = slots_validos
@@ -309,7 +273,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
                     if primer_dia_disponible is None:
                         primer_dia_disponible = info['fecha']
                 else:
-                    # Razón por la que no está disponible
                     if not info['tiene_horario']:
                         info['razon'] = 'No laborable'
                     else:
@@ -328,7 +291,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
             sugerencia_auto = auto_suggest_schedule(ticket.tecnico, ticket.prioridad)
 
-        # ── Chat ───────────────────────────────────────────────────────
         puede_mensajear = (
             ticket.tecnico_id is not None
             and not ticket.is_terminal
@@ -337,8 +299,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
                 or (user.is_inquilino and ticket.inquilino_id == user.id)
             )
         )
-        # Chat de coordinación en estado APROBADO — solo técnico y residente,
-        # el administrador no participa en el hilo de comunicación.
         chat_coordinacion = (
             ticket.is_aprobado
             and user.is_inquilino
@@ -356,8 +316,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             'evidencias_resolucion': ticket.evidencias.filter(momento=EvidenciaTicket.Momento.RESOLUCION),
             'transition_form': TicketTransitionForm(),
             'puede_validar': user.is_admin and ticket.is_pendiente_validacion,
-            # El admin puede reasignar el técnico mientras el ticket está APROBADO
-            # pero el inquilino aún no ha agendado (fecha_programada es None).
             'puede_reasignar': (
                 user.is_admin
                 and ticket.is_aprobado
@@ -371,13 +329,11 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             'mensaje_form': MensajeForm(),
             'puede_mensajear': puede_mensajear or chat_coordinacion,
             'chat_coordinacion': chat_coordinacion,
-            # Pre-asignación admin
             'tiene_preasignacion': tiene_preasignacion,
             'tecnico_sugerido_sobrecargado': tecnico_sugerido_sobrecargado,
             'sin_tecnicos_disponibles': sin_tecnicos_disponibles,
             'peso_ticket': get_priority_weight(ticket.prioridad),
             'duracion_visita': duracion_visita,
-            # Auto-agenda inquilino
             'puede_agendar': puede_agendar,
             'dias_disponibles': dias_disponibles,
             'dias_ocupados': dias_ocupados,
@@ -389,7 +345,6 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-# ── Creación (Inquilino) ────────────────────────────────────────────────
 
 class TicketCreateView(RoleRequiredMixin, CreateView):
     allowed_roles = ('INQUILINO',)
@@ -426,7 +381,6 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
         return kwargs
 
     def form_invalid(self, form):
-        """Muestra errores del formulario al usuario."""
         for field, errors in form.errors.items():
             for error in errors:
                 if field == '__all__':
@@ -439,7 +393,6 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.inquilino = self.request.user
         response = super().form_valid(form)
-        # Registramos creación en historial
         from .models import HistorialEstado
         HistorialEstado.objects.create(
             ticket=self.object,
@@ -448,15 +401,7 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
             actor=self.request.user,
             nota='Ticket creado por el residente.',
         )
-        # Nota: las notificaciones de "nuevo ticket" a admin (in-app + los dos
-        # correos) NO se disparan aquí. En este punto categoria/prioridad
-        # todavía son el default del modelo (OTRO/MEDIA) porque la IA aún no
-        # analizó el ticket — se disparan desde
-        # notify.py::_on_pendiente_validacion, que corre después de que la IA
-        # (o su fallback) ya fijó los valores reales. Antes se enviaban aquí y
-        # mostraban categoría/prioridad incorrectas.
 
-        # Evidencias subidas en el mismo formulario
         for f in self.request.FILES.getlist('evidencias'):
             EvidenciaTicket.objects.create(
                 ticket=self.object,
@@ -464,7 +409,6 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
                 momento=EvidenciaTicket.Momento.REPORTE,
                 subido_por=self.request.user,
             )
-        # Disparar análisis IA — async con Celery, síncrono como fallback
         try:
             from apps.ai_agent.tasks import analyze_ticket
             analyze_ticket.apply_async(args=[self.object.pk], countdown=2)
@@ -488,14 +432,8 @@ class TicketCreateView(RoleRequiredMixin, CreateView):
         return ctx
 
 
-# ── Validación (Admin) → Aprobación ─────────────────────────────────────
 
 class TicketValidateView(RoleRequiredMixin, UpdateView):
-    """Admin aprueba el ticket y asigna técnico (estado → APROBADO).
-
-    El admin ya NO agenda la visita. Al aprobar, se notifica al inquilino
-    para que él seleccione el horario desde la disponibilidad real del técnico.
-    """
 
     allowed_roles = ('ADMIN',)
     model = Ticket
@@ -509,12 +447,6 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
         return reverse('ticket_detail', kwargs={'pk': self.object.pk})
 
     def form_invalid(self, form):
-        """Vuelve al detalle con los errores como mensajes.
-
-        No se puede renderizar ``detail.html`` desde aquí: el contexto de
-        ``UpdateView`` no incluye ``puede_validar``/``validate_form``/etc., así
-        que el admin vería la ficha sin el formulario ni el error.
-        """
         for error in _errores_legibles(form):
             messages.error(self.request, error)
         return redirect('ticket_detail', pk=self.kwargs['pk'])
@@ -525,9 +457,6 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             messages.error(self.request, 'El ticket ya no se encuentra en validación.')
             return redirect('ticket_detail', pk=ticket.pk)
 
-        # Segunda barrera (el form ya lo exige): nunca aprobar sin técnico ni
-        # sin clasificar — el residente recibiría un aviso para agendar contra
-        # una agenda inexistente.
         if not ticket.tecnico_id:
             form.add_error('tecnico', 'Debes asignar un técnico antes de aprobar el ticket.')
             return self.form_invalid(form)
@@ -564,10 +493,6 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             messages.error(self.request, str(exc))
             return redirect('ticket_detail', pk=ticket.pk)
 
-        # Correos SMTP: al residente (agendar cita) y al técnico (detalles).
-        # Antes también se disparaba notify_ticket_aprobado (Celery, texto
-        # plano) para el mismo evento — el residente recibía dos correos
-        # distintos por una sola aprobación. Se dejó solo el HTML de abajo.
         try:
             from .services.email_service import (
                 send_ticket_approved_resident_email,
@@ -585,19 +510,12 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
         return redirect(self.get_success_url())
 
 
-# ── Auto-agenda del Inquilino (APROBADO → ASIGNADO) ─────────────────────
 
 class InquilinoScheduleView(LoginRequiredMixin, View):
-    """El inquilino selecciona su horario de visita.
-
-    Recibe fecha + hora desde el schedule picker y transiciona
-    el ticket de APROBADO a ASIGNADO.
-    """
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         ticket = get_object_or_404(Ticket, pk=pk)
 
-        # Validar que el inquilino sea el dueño del ticket
         if ticket.inquilino_id != request.user.id:
             raise PermissionDenied('Solo el inquilino del ticket puede agendar.')
 
@@ -610,12 +528,6 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, 'Por favor selecciona una fecha y hora válidas.')
             return redirect('ticket_detail', pk=pk)
 
-        # Los tres valores se guardan en variables independientes — NO en
-        # `ticket` ni en lo que devuelva form.save(commit=False), que es la
-        # MISMA instancia de `ticket` (no una copia). Si se leyeran desde ahí,
-        # el ticket.refresh_from_db() de más abajo los borraría antes de
-        # poder persistirlos (bug real detectado: los tickets quedaban en
-        # ASIGNADO con fecha_programada/hora_programada_inicio/fin en None).
         fecha_programada = form.cleaned_data.get('fecha_programada')
         hora_programada_inicio = form.cleaned_data.get('hora_programada_inicio')
         hora_programada_fin = form.cleaned_data.get('hora_programada_fin')
@@ -624,7 +536,6 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, 'Debes seleccionar una fecha y hora de inicio válidas.')
             return redirect('ticket_detail', pk=pk)
 
-        # Calcular hora_fin automáticamente si no fue proporcionada
         if not hora_programada_fin:
             from datetime import datetime, timedelta
             duracion = get_visit_duration(ticket.prioridad)
@@ -651,17 +562,12 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             messages.error(request, str(exc))
             return redirect('ticket_detail', pk=pk)
 
-        # La transición fue exitosa: persistir campos de horario.
-        # Refrescamos desde BD para tener el estado actualizado por
-        # transition_ticket, luego escribimos los tres campos de horario
-        # desde las variables independientes (no desde `ticket`).
         ticket.refresh_from_db()
         ticket.fecha_programada = fecha_programada
         ticket.hora_programada_inicio = hora_programada_inicio
         ticket.hora_programada_fin = hora_programada_fin
         ticket.save(update_fields=['fecha_programada', 'hora_programada_inicio', 'hora_programada_fin'])
 
-        # Mensaje automático de confirmación en el chat
         fecha_str = fecha_programada.strftime('%d/%m/%Y')
         inicio_str = hora_programada_inicio.strftime('%H:%M')
         fin_str = hora_programada_fin.strftime('%H:%M')
@@ -677,7 +583,6 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
             ),
         )
 
-        # Correo SMTP al técnico con la agenda
         try:
             from .services.email_service import send_ticket_scheduled_email
             send_ticket_scheduled_email(ticket.pk)
@@ -691,23 +596,8 @@ class InquilinoScheduleView(LoginRequiredMixin, View):
         return redirect('ticket_detail', pk=pk)
 
 
-# ── Transiciones genéricas (Técnico/Admin) ─────────────────────────────
 
 class TicketTransitionView(LoginRequiredMixin, View):
-    """Endpoint POST para mover un ticket a un estado destino concreto.
-
-    Reservado para transiciones "simples" que no requieren datos
-    adicionales del actor. PENDIENTE_VALIDACION→APROBADO, APROBADO→ASIGNADO
-    y EN_PROGRESO→RESUELTO exigen datos que solo se capturan en sus
-    formularios dedicados (:class:`TicketValidateView`,
-    :class:`InquilinoScheduleView`, :class:`TicketResolveView`) — un
-    admin podía aprobar un ticket por esta vía genérica sin categoría,
-    prioridad ni técnico asignado (transition_ticket() no valida esos
-    datos para el destino APROBADO, solo para ASIGNADO), un inquilino
-    podía llegar antes a ASIGNADO sin horario, y un técnico a RESUELTO
-    sin evidencia, así que esas tres transiciones se bloquean aquí y se
-    redirige al flujo correcto.
-    """
 
     _REQUIERE_FORMULARIO_DEDICADO = {
         (TicketStatus.PENDIENTE_VALIDACION, TicketStatus.APROBADO),
@@ -727,7 +617,6 @@ class TicketTransitionView(LoginRequiredMixin, View):
             )
             return redirect('ticket_detail', pk=pk)
 
-        # Reglas de pertenencia
         if user.is_tecnico and ticket.tecnico_id != user.id:
             messages.error(request, 'Este ticket no está asignado a ti.')
             return redirect('ticket_detail', pk=pk)
@@ -753,10 +642,8 @@ class TicketTransitionView(LoginRequiredMixin, View):
         return redirect('ticket_detail', pk=pk)
 
 
-# ── Resolución (Técnico) ────────────────────────────────────────────────
 
 class TicketResolveView(RoleRequiredMixin, View):
-    """Técnico cierra el ticket: añade notas + evidencia + transición a RESUELTO."""
 
     allowed_roles = ('TECNICO',)
 
@@ -768,7 +655,6 @@ class TicketResolveView(RoleRequiredMixin, View):
 
         form = TicketResolutionForm(request.POST, instance=ticket)
         if not form.is_valid():
-            # Mostrar el primer error de validación del formulario
             primer_error = next(
                 (e for errors in form.errors.values() for e in errors), 
                 'Las notas de resolución no son válidas.'
@@ -776,7 +662,6 @@ class TicketResolveView(RoleRequiredMixin, View):
             messages.error(request, primer_error)
             return redirect('ticket_detail', pk=pk)
 
-        # Evidencia obligatoria: el técnico debe cargar al menos un archivo
         evidencias = request.FILES.getlist('evidencias')
         if not evidencias:
             messages.error(
@@ -807,7 +692,6 @@ class TicketResolveView(RoleRequiredMixin, View):
             messages.error(request, str(exc))
             return redirect('ticket_detail', pk=pk)
 
-        # Correos SMTP al residente (resolución) y al admin (cierre del ciclo)
         try:
             from .services.email_service import (
                 send_ticket_resolved_email,
@@ -822,10 +706,8 @@ class TicketResolveView(RoleRequiredMixin, View):
         return redirect('ticket_detail', pk=pk)
 
 
-# ── Mensajes Técnico ↔ Inquilino ───────────────────────────────────────
 
 class MensajeCreateView(LoginRequiredMixin, View):
-    """Crea un mensaje en el hilo de comunicación del ticket."""
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         ticket = get_object_or_404(
@@ -852,7 +734,6 @@ class MensajeCreateView(LoginRequiredMixin, View):
             msg.autor = user
             msg.save()
 
-            # Notificación in-app para la contraparte
             try:
                 from .services.notify import notify_new_message
                 notify_new_message(ticket, autor=user)
@@ -870,7 +751,44 @@ class MensajeCreateView(LoginRequiredMixin, View):
         return redirect('ticket_detail', pk=pk)
 
 
-# ── Dashboard (mantener compat con URL existente) ───────────────────────
+
+def _sparkline_coords(valores: list[int], *, ancho: int = 104, alto: int = 32, relleno: int = 4) -> list[tuple[float, float]]:
+    if not valores:
+        return []
+    maximo, minimo = max(valores), min(valores)
+    rango = (maximo - minimo) or 1
+    n = len(valores)
+    paso_x = ancho / (n - 1) if n > 1 else 0
+    return [
+        (round(i * paso_x, 1), round(relleno + (alto - 2 * relleno) * (1 - (v - minimo) / rango), 1))
+        for i, v in enumerate(valores)
+    ]
+
+
+def _stat_tile_trend(serie_semana_actual: list[int], total_semana_previa: int, *, bueno_si_baja: bool | None) -> dict:
+    coords = _sparkline_coords(serie_semana_actual)
+    total_actual = sum(serie_semana_actual)
+    delta = total_actual - total_semana_previa
+    delta_pct = round(delta / total_semana_previa * 100) if total_semana_previa > 0 else None
+
+    if bueno_si_baja is None or delta == 0:
+        color = 'text-zinc-500'
+    elif (delta > 0) != bueno_si_baja:
+        color = 'text-emerald-600'
+    else:
+        color = 'text-red-600'
+
+    ultimo_x, ultimo_y = coords[-1] if coords else (0, 0)
+    return {
+        'polyline': ' '.join(f'{x},{y}' for x, y in coords),
+        'ultimo_x': f'{ultimo_x}',
+        'ultimo_y': f'{ultimo_y}',
+        'total_actual': total_actual,
+        'delta': delta,
+        'delta_pct': delta_pct,
+        'color': color,
+    }
+
 
 class DashboardView(LoginRequiredMixin, ListView):
     model = Ticket
@@ -888,7 +806,6 @@ class DashboardView(LoginRequiredMixin, ListView):
         return qs.filter(inquilino=user)
 
     def _scope(self):
-        """Queryset base filtrado por rol para KPIs."""
         user = self.request.user
         qs = Ticket.objects.all()
         if user.is_tecnico:
@@ -902,7 +819,6 @@ class DashboardView(LoginRequiredMixin, ListView):
         user = self.request.user
         scope = self._scope()
 
-        # Una sola query con aggregate en vez de múltiples count()
         agg_kwargs = {
             'pendientes': Count('pk', filter=Q(estado__in=[
                 TicketStatus.CREADO_PENDIENTE_IA,
@@ -927,16 +843,49 @@ class DashboardView(LoginRequiredMixin, ListView):
             })
 
         ctx.update(scope.aggregate(**agg_kwargs))
+
+        if not user.is_tecnico:
+            ctx['kpi_tendencias'] = self._tendencias_semanales(scope)
+
         return ctx
 
+    def _tendencias_semanales(self, scope) -> dict:
+        hoy = timezone.localdate()
+        dias = [hoy - timedelta(days=i) for i in range(6, -1, -1)]
+        inicio_ventana = dias[0]
+        inicio_semana_previa = inicio_ventana - timedelta(days=7)
 
-# ── API AJAX: Disponibilidad de técnicos ─────────────────────────────────
+        def _serie_por_fecha(queryset, campo_fecha):
+            filas = (
+                queryset
+                .filter(**{f'{campo_fecha}__date__gte': inicio_semana_previa})
+                .annotate(dia=TruncDate(campo_fecha))
+                .values('dia')
+                .annotate(n=Count('pk'))
+            )
+            por_dia = {fila['dia']: fila['n'] for fila in filas}
+            semana_actual = [por_dia.get(d, 0) for d in dias]
+            semana_previa_total = sum(n for d, n in por_dia.items() if d < inicio_ventana)
+            return semana_actual, semana_previa_total
+
+        creados, creados_prev = _serie_por_fecha(scope, 'creado_en')
+        resueltos, resueltos_prev = _serie_por_fecha(
+            scope.filter(resuelto_en__isnull=False), 'resuelto_en',
+        )
+        asignados, asignados_prev = _serie_por_fecha(
+            HistorialEstado.objects.filter(ticket__in=scope, estado_nuevo=TicketStatus.ASIGNADO),
+            'creado_en',
+        )
+
+        return {
+            'pendientes': _stat_tile_trend(creados, creados_prev, bueno_si_baja=True),
+            'en_progreso': _stat_tile_trend(asignados, asignados_prev, bueno_si_baja=None),
+            'resueltos': _stat_tile_trend(resueltos, resueltos_prev, bueno_si_baja=False),
+        }
+
+
 
 class TechnicianAvailabilityView(LoginRequiredMixin, View):
-    """API AJAX que retorna la disponibilidad de un técnico en JSON.
-
-    GET /tickets/api/disponibilidad/<tecnico_id>/?fecha=YYYY-MM-DD&prioridad=MEDIA
-    """
 
     def get(self, request: HttpRequest, tecnico_id: int) -> JsonResponse:
         if not request.user.is_admin:
@@ -951,13 +900,10 @@ class TechnicianAvailabilityView(LoginRequiredMixin, View):
         except ValueError:
             fecha = timezone.localdate()
 
-        # Multi-day availability
         disponibilidad = get_technician_availability_multi_day(tecnico, desde=fecha, dias=5)
 
-        # Auto-suggest
         sugerencia = auto_suggest_schedule(tecnico, prioridad, desde=fecha)
 
-        # Serialize
         data = {
             'tecnico': {
                 'id': tecnico.id,
@@ -999,19 +945,8 @@ class TechnicianAvailabilityView(LoginRequiredMixin, View):
         return JsonResponse(data)
 
 
-# ── Reasignación de técnico post-aprobación (Admin) ─────────────────────
 
 class TicketReassignView(RoleRequiredMixin, View):
-    """Permite al admin cambiar el técnico asignado mientras el ticket está
-    en estado APROBADO y el inquilino aún no ha agendado la visita.
-
-    Esta vista NO cambia el estado del ticket. Solo actualiza ``ticket.tecnico``
-    y registra la acción en el historial como nota. Es silenciosa (sin correos)
-    para no confundir al residente con múltiples notificaciones.
-
-    Si el nuevo técnico también está sobrecargado el form lo habrá impedido;
-    aun así se valida aquí como segunda barrera.
-    """
 
     allowed_roles = ('ADMIN',)
 
@@ -1039,7 +974,6 @@ class TicketReassignView(RoleRequiredMixin, View):
             messages.error(request, 'Debes seleccionar un técnico válido.')
             return redirect('ticket_detail', pk=pk)
 
-        # Segunda barrera: verificar capacidad aunque el form lo haya deshabilitado
         if not nuevo_tecnico.puede_aceptar_ticket(ticket.prioridad):
             messages.error(
                 request,
@@ -1056,7 +990,7 @@ class TicketReassignView(RoleRequiredMixin, View):
         HistorialEstado.objects.create(
             ticket=ticket,
             estado_anterior=ticket.estado,
-            estado_nuevo=ticket.estado,   # el estado no cambia
+            estado_nuevo=ticket.estado,
             actor=request.user,
             nota=(
                 f'Técnico reasignado por {request.user.get_full_name()}. '

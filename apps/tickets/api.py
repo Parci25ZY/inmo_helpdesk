@@ -15,8 +15,6 @@ from .serializers import NotificacionSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def notificaciones_list(request):
-    """Lista las últimas 5 notificaciones no leídas del usuario."""
-    # Count total unread
     unread_count = Notificacion.objects.filter(
         usuario=request.user,
         leido=False
@@ -37,7 +35,6 @@ def notificaciones_list(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def notificaciones_marcar_leidas(request):
-    """Marca todas las notificaciones del usuario como leídas."""
     Notificacion.objects.filter(
         usuario=request.user,
         leido=False
@@ -49,7 +46,6 @@ def notificaciones_marcar_leidas(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def notificacion_marcar_leida(request, pk):
-    """Marca una sola notificación como leída y retorna el nuevo conteo."""
     updated = Notificacion.objects.filter(
         pk=pk,
         usuario=request.user,
@@ -72,17 +68,6 @@ logger = logging.getLogger(__name__)
 
 
 class TicketReportPDFView(APIView):
-    """Genera y descarga el reporte PDF de un ticket resuelto.
-
-    Autenticación: JWT (``Authorization: Bearer <token>``) o Session (navegador).
-    Permisos: Object-Level — solo participantes del ticket o administradores.
-
-    Respuestas:
-        200: PDF generado correctamente (``application/pdf``).
-        400: El ticket no está en estado RESUELTO.
-        403: El usuario no tiene permiso sobre este ticket.
-        404: Ticket no encontrado.
-    """
 
     permission_classes = [IsAuthenticated, IsTicketParticipantOrAdmin]
 
@@ -100,7 +85,6 @@ class TicketReportPDFView(APIView):
     def get(self, request, pk):
         ticket = self.get_object()
 
-        # Solo tickets resueltos generan reporte
         if ticket.estado != TicketStatus.RESUELTO:
             return Response(
                 {'detail': 'Solo se pueden generar reportes de tickets resueltos.'},
@@ -109,8 +93,6 @@ class TicketReportPDFView(APIView):
 
         try:
             from .services.pdf_service import generate_ticket_pdf
-            # Admin obtiene versión de auditoría (con historial de estados),
-            # Residente/Técnico obtienen comprobante de garantía de servicio.
             is_audit = getattr(request.user, 'is_admin', False) or request.user.is_superuser
             pdf_bytes = generate_ticket_pdf(ticket, is_audit=is_audit)
         except Exception:

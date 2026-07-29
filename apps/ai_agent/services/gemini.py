@@ -1,4 +1,3 @@
-"""Cliente Gemini para embeddings y generación de texto."""
 
 from __future__ import annotations
 
@@ -25,7 +24,6 @@ def _client() -> genai.Client:
 
 
 def embed_text(text: str) -> list[float]:
-    """Genera embedding vectorial para un fragmento de texto."""
     client = _client()
     response = client.models.embed_content(
         model=EMBEDDING_MODEL,
@@ -36,7 +34,6 @@ def embed_text(text: str) -> list[float]:
 
 
 def embed_query(text: str) -> list[float]:
-    """Embedding optimizado para consultas de búsqueda."""
     client = _client()
     response = client.models.embed_content(
         model=EMBEDDING_MODEL,
@@ -51,7 +48,6 @@ def generate_chat_response(
     user_prompt: str,
     history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Genera respuesta del asistente y metadatos estructurados."""
     client = _client()
     contents: list[types.Content] = []
 
@@ -138,17 +134,6 @@ def analyze_ticket_description(
     descripcion: str,
     tecnicos: list[dict] | None = None,
 ) -> dict[str, Any]:
-    """Analiza la descripción de un ticket y devuelve sugerencias estructuradas.
-
-    Args:
-        titulo: título del ticket ingresado por el inquilino.
-        descripcion: descripción detallada del problema.
-        tecnicos: lista de dicts con 'id' y 'nombre' de técnicos disponibles.
-
-    Returns:
-        Dict con categoria_sugerida, prioridad_sugerida, descripcion_tecnica,
-        razon_asignacion, tecnico_sugerido_id y confianza.
-    """
     client = _client()
 
     tecnicos_bloque = ''
@@ -238,7 +223,6 @@ def analyze_ticket_description(
 
 
 def chunk_text(text: str, chunk_size: int = 600, overlap: int = 80) -> list[str]:
-    """Divide texto en fragmentos con solapamiento para indexación RAG."""
     text = re.sub(r'\s+', ' ', text.strip())
     if not text:
         return []

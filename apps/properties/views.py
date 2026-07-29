@@ -15,7 +15,6 @@ from .models import Edificio, Unidad
 
 
 class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Restringe la vista a usuarios con rol Administrador o superusuario."""
 
     def test_func(self) -> bool:
         user = self.request.user
@@ -28,7 +27,6 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return redirect('dashboard')
 
 
-# ── Edificios ────────────────────────────────────────────────────────────────
 
 class EdificioListView(AdminRequiredMixin, ListView):
     model = Edificio
@@ -116,7 +114,6 @@ class EdificioDeleteView(AdminRequiredMixin, DeleteView):
         return response
 
 
-# ── Unidades ─────────────────────────────────────────────────────────────────
 
 class UnidadListView(AdminRequiredMixin, ListView):
     model = Unidad

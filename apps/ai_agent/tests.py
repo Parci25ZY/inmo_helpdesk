@@ -1,8 +1,3 @@
-"""Tests para apps/ai_agent: recuperación/indexación RAG y orquestación del chat.
-
-Todas las llamadas a Gemini (embeddings y generación) se mockean: estos tests
-no deben depender de red ni de GEMINI_API_KEY para ser reproducibles en CI.
-"""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -79,7 +74,7 @@ class TestRetrieveRelevantChunks:
 
     def test_skips_chunks_without_embedding(self):
         doc = _make_doc()
-        _make_chunk(doc, 0, [])  # aún no indexado / sin embedding generado
+        _make_chunk(doc, 0, [])
 
         resultados = retrieve_relevant_chunks([1.0, 0.0, 0.0], min_score=0.0)
 
@@ -129,12 +124,6 @@ class TestIndexDocument:
 @pytest.mark.django_db
 class TestProcessUserMessage:
     def _crear_sesion_con_mensajes(self, texto_usuario='¿Cómo cierro la llave de paso?'):
-        """Crea sesión + par de mensajes tal como lo hace ChatMessageSendView.
-
-        No se fuerza ningún orden de timestamp: el llamador real (views.py)
-        siempre pasa `user_msg` explícitamente a process_user_message, así que
-        el resultado no debe depender de cómo haya quedado `creado_en`.
-        """
         usuario = _make_user()
         sesion = ChatSession.objects.create(usuario=usuario)
         user_msg = ChatMessage.objects.create(
@@ -174,11 +163,6 @@ class TestProcessUserMessage:
         assert sesion.titulo == user_msg.contenido[:120]
 
     def test_langchain_success_does_not_duplicate_embedding_or_retrieval(self):
-        """Regresión: antes, cuando LangChain respondía bien, igual se hacía
-        un embed_query + retrieve_relevant_chunks "nativo" por adelantado que
-        nunca se usaba — doble llamada a la API de Gemini por mensaje. Ahora
-        ese camino solo debe ejecutarse si LangChain falla.
-        """
         sesion, user_msg, asistente_msg = self._crear_sesion_con_mensajes()
         resultado_llm = {'respuesta': 'Listo.', 'requiere_tecnico': False, 'confianza': 0.9}
 
@@ -224,17 +208,12 @@ class TestProcessUserMessage:
         assert 'No encontré tu mensaje' in actualizado.contenido
 
     def test_explicit_user_message_wins_even_when_timestamps_tie(self):
-        """Regresión: antes se buscaba el mensaje del usuario por
-        `creado_en__lt`, y dos mensajes creados en sucesión rápida pueden
-        compartir el mismo microsegundo (confirmado en este entorno). Pasar
-        `user_msg` explícitamente evita depender de esa búsqueda por completo.
-        """
         sesion, user_msg, asistente_msg = self._crear_sesion_con_mensajes()
         empate = timezone.now()
         ChatMessage.objects.filter(pk__in=[user_msg.pk, asistente_msg.pk]).update(creado_en=empate)
         user_msg.refresh_from_db()
         asistente_msg.refresh_from_db()
-        assert user_msg.creado_en == asistente_msg.creado_en  # confirma el empate
+        assert user_msg.creado_en == asistente_msg.creado_en
 
         resultado_llm = {'respuesta': 'Listo.', 'requiere_tecnico': False, 'confianza': 0.8}
         with patch(
@@ -247,8 +226,6 @@ class TestProcessUserMessage:
         assert actualizado.contenido == 'Listo.'
 
     def test_fallback_lookup_still_works_without_explicit_user_message(self):
-        """Compatibilidad hacia atrás: si no se pasa user_msg, se sigue
-        intentando la búsqueda por timestamp (para llamadores externos)."""
         sesion, user_msg, asistente_msg = self._crear_sesion_con_mensajes()
         ChatMessage.objects.filter(pk=user_msg.pk).update(
             creado_en=timezone.now() - timedelta(seconds=1),
@@ -265,9 +242,6 @@ class TestProcessUserMessage:
         assert actualizado.contenido == 'Vía fallback.'
 
     def test_gemini_failure_sets_error_state_and_keeps_metadata(self):
-        """Simula una caída total de Gemini: tanto LangChain como el
-        fallback nativo (que ahora solo se invoca cuando LangChain falla)
-        deben fallar para llegar al estado ERROR."""
         sesion, user_msg, asistente_msg = self._crear_sesion_con_mensajes()
 
         with patch(

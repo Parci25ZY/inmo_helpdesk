@@ -1,4 +1,3 @@
-"""Servicio de recuperación de contraseña con verificación por correo."""
 
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ class PasswordResetError(Exception):
 
 
 def request_password_reset(email: str) -> None:
-    """Genera código y envía correo. No revela si el email existe."""
     email = email.strip().lower()
     user = User.objects.filter(email__iexact=email, is_active=True).first()
 
@@ -30,11 +28,9 @@ def request_password_reset(email: str) -> None:
         )
         _send_verification_email(user, record.code)
 
-    # Siempre mismo mensaje público (evita enumeración de cuentas).
 
 
 def verify_email_code(email: str, code: str) -> str:
-    """Valida código de 6 dígitos y retorna JWT de reset."""
     email = email.strip().lower()
     code = code.strip()
 
@@ -60,7 +56,6 @@ def verify_email_code(email: str, code: str) -> str:
 
 
 def confirm_password_reset(reset_token: str, new_password: str) -> tuple[User, dict[str, str]]:
-    """Cambia contraseña con JWT de reset y emite tokens de sesión API."""
     try:
         user = PasswordResetToken.get_user(reset_token)
     except Exception as exc:

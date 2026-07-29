@@ -1,4 +1,3 @@
-"""Serializers DRF para autenticación JWT y recuperación de contraseña."""
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -9,7 +8,6 @@ User = get_user_model()
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Login JWT usando correo electrónico como identificador."""
 
     username_field = User.USERNAME_FIELD
 

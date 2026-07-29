@@ -7,11 +7,9 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Cargar variables de entorno desde .env
 load_dotenv(BASE_DIR / '.env')
 
 
-# Seguridad
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
     raise ImproperlyConfigured(
@@ -22,7 +20,6 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
-# Aplicaciones 
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -31,7 +28,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Terceros
     'tailwind',
     'django_browser_reload',
     'django_htmx',
@@ -41,7 +37,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_tailwind',
 
-    # Apps del proyecto
     'apps.accounts',
     'apps.properties',
     'apps.tickets',
@@ -49,15 +44,12 @@ INSTALLED_APPS = [
     'theme',
 ]
 
-# Tailwind CSS
 TAILWIND_APP_NAME = 'theme'
 
-# Crispy Forms (Tailwind)
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
 
 
-# Middleware 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -73,7 +65,6 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'config.urls'
 
 
-# Templates 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -93,7 +84,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Base de Datos
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -105,11 +95,9 @@ DATABASES = {
     }
 }
 
-# MODELO DE USUARIO PERSONALIZADO
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 
-# Validación de Contraseñas 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -117,20 +105,17 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internacionalización
 LANGUAGE_CODE = 'es-ec'
 TIME_ZONE = 'America/Guayaquil'
 USE_I18N = True
 USE_TZ = True
 
-# Archivos Estáticos y Media 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Celery (Tareas asíncronas con Redis)
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_ACCEPT_CONTENT = ['json']
@@ -138,12 +123,10 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# Inteligencia Artificial
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_CHAT_MODEL = os.getenv('GEMINI_CHAT_MODEL', 'gemini-flash-latest')
 GEMINI_EMBEDDING_MODEL = os.getenv('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001')
 
-# Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -165,7 +148,6 @@ REST_FRAMEWORK = {
     },
 }
 
-# JWT (simplejwt)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_ACCESS_MINUTES', '60'))),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_DAYS', '7'))),
@@ -176,7 +158,6 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# Correo (recuperación de contraseña)
 EMAIL_BACKEND = os.getenv(
     'EMAIL_BACKEND',
     'django.core.mail.backends.console.EmailBackend',
@@ -189,19 +170,14 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@inmohelpdesk.local')
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 
-# Celery (config adicional)
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 120
-# En desarrollo sin worker Redis, ejecutar tareas en el mismo proceso
 CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', str(DEBUG)).lower() == 'true'
-#csrf cookie
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 
-# ── Otros ──────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Necesario para django-tailwind en Windows
 INTERNAL_IPS = ['127.0.0.1']
 NPM_BIN_PATH = os.getenv('NPM_BIN_PATH') or shutil.which('npm') or "/usr/bin/npm"
 
@@ -209,10 +185,6 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Endurecimiento para producción — no afecta el entorno de desarrollo
-# porque todas estas condiciones dependen de DEBUG=False (en .env local
-# DEBUG=True), y SECURE_SSL_REDIRECT/HSTS solo deben activarse detrás de
-# un proxy/servidor que ya termine TLS.
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
     SESSION_COOKIE_SECURE = True
@@ -223,12 +195,6 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
 
-# Logging — antes no había ninguna configuración explícita, así que los
-# `logger.exception`/`logger.warning` de los servicios (chat.py, rag.py,
-# tickets/views.py, etc.) no quedaban visibles en ningún lado más allá de
-# la consola por defecto de Django. Handler de consola simple, suficiente
-# para desarrollo y para que un servicio de logs (systemd/docker/etc.)
-# capture stdout en producción.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

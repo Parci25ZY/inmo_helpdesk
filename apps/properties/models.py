@@ -4,11 +4,6 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Edificio(models.Model):
-    """Inmueble principal (edificio, condominio o conjunto residencial).
-
-    Agrupa una o varias :class:`Unidad`, sirve como contexto geográfico
-    para los tickets y como unidad de reporte para el administrador.
-    """
 
     nombre = models.CharField(
         _('Nombre del edificio'),
@@ -46,11 +41,6 @@ class Edificio(models.Model):
 
 
 class Unidad(models.Model):
-    """Espacio individual habitable o comercial dentro de un Edificio.
-
-    Cada unidad puede tener un único inquilino asignado (relación 1‑1 lógica).
-    Los tickets se vinculan a una unidad para dar contexto al mantenimiento.
-    """
 
     class Tipo(models.TextChoices):
         DEPARTAMENTO = 'DEPARTAMENTO', _('Departamento')
@@ -114,5 +104,4 @@ class Unidad(models.Model):
 
     @property
     def etiqueta_completa(self) -> str:
-        """Cadena legible para mostrar en selects y tablas."""
         return f'{self.edificio.nombre} · {self.numero} (Piso {self.piso})'

@@ -1,4 +1,3 @@
-"""Integración LangChain: retriever personalizado + cadena conversacional."""
 
 from __future__ import annotations
 
@@ -34,14 +33,6 @@ class EscalationSchema(BaseModel):
 
 
 class PostgresRAGRetriever(BaseRetriever):
-    """Retriever LangChain que consulta KnowledgeChunk en PostgreSQL.
-
-    Además de devolver los `Document` que espera la interfaz de LangChain,
-    guarda los `KnowledgeChunk` reales de la última recuperación en
-    `last_chunks_used` — así el llamador puede reusarlos (para marcar
-    `chunks_usados` y para las reglas de escalación) sin tener que volver a
-    embeder la consulta ni a consultar la base de datos una segunda vez.
-    """
 
     top_k: int = 4
     _last_chunks: list[KnowledgeChunk] = PrivateAttr(default_factory=list)
@@ -74,14 +65,6 @@ def generate_with_langchain(
     user_message: str,
     history: list[dict[str, str]] | None = None,
 ) -> tuple[dict[str, Any], list[KnowledgeChunk]]:
-    """Genera respuesta estructurada usando LangChain + retriever RAG.
-
-    Único punto de embedding/recuperación por mensaje: el retriever hace
-    ambas cosas una sola vez y expone los chunks usados via
-    `last_chunks_used`, en vez de que el llamador recupere el contexto por
-    su cuenta antes de invocar esta función (lo que antes duplicaba la
-    llamada de embeddings y la búsqueda en la base de datos en cada mensaje).
-    """
     retriever = PostgresRAGRetriever()
     docs = retriever.invoke(user_message)
     chunks = retriever.last_chunks_used

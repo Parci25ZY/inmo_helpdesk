@@ -18,7 +18,6 @@ TEXTAREA_CLASS = INPUT_CLASS + ' min-h-[120px] resize-y'
 
 
 class EdificioForm(forms.ModelForm):
-    """Crear y editar edificios desde el panel administrativo."""
 
     class Meta:
         model = Edificio
@@ -34,11 +33,9 @@ class EdificioForm(forms.ModelForm):
 
 
 class UnidadForm(forms.ModelForm):
-    """Crear y editar unidades dentro de un edificio."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Solo residentes sin unidad asignada (más el actual si existe)
         instancia = kwargs.get('instance') or self.instance
         qs = CustomUser.objects.filter(role=CustomUser.Roles.INQUILINO, is_active=True, unidad_asignada__isnull=True)
         if instancia and instancia.pk and instancia.inquilino_id:

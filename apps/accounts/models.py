@@ -54,7 +54,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=10,
         unique=True,
         null=True,
-        blank=True,   # Vacío permitido para usuarios pre-existentes; el validator valida si se provee
+        blank=True,
         validators=[valida_cedula],
         help_text=_('Cédula ecuatoriana de 10 dígitos. Requerida para verificar la identidad del usuario.'),
     )
@@ -118,16 +118,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def is_residente(self) -> bool:
-        """Alias de is_inquilino para la nueva terminología."""
         return self.is_inquilino
 
     @property
     def is_tecnico(self) -> bool:
         return self.role == self.Roles.TECNICO
 
-    # ── Carga de trabajo (solo técnicos) ───────────────────────────────
 
-    # Pesos de prioridad para el cálculo de carga
     PRIORITY_WEIGHTS: dict[str, int] = {
         'ALTA': 3,
         'MEDIA': 2,
@@ -138,7 +135,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def carga_trabajo_actual(self) -> int:
-        """Suma de pesos de prioridad de tickets activos asignados."""
         if not self.is_tecnico:
             return 0
         from django.db.models import Case, IntegerField, Sum, Value, When
@@ -159,19 +155,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def carga_disponible(self) -> int:
-        """Puntos de carga que aún puede aceptar el técnico."""
         return max(0, self.max_carga_trabajo - self.carga_trabajo_actual)
 
     def puede_aceptar_ticket(self, prioridad: str) -> bool:
-        """True si el técnico tiene capacidad para un ticket de esta prioridad."""
         peso = self.PRIORITY_WEIGHTS.get(prioridad, 1)
         return self.carga_disponible >= peso
 
-    # ── Especialidades múltiples (M2M) ──────────────────────────────────
 
     @property
     def especialidades_list(self) -> list[str]:
-        """Lista de especialidades del técnico (desde tabla M2M)."""
         if not self.is_tecnico:
             return []
         return list(
@@ -181,42 +173,34 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def especialidades_display(self) -> str:
-        """Texto legible de especialidades separadas por coma."""
         if not self.is_tecnico:
             return ''
         items = self.especialidades_tecnico.all()
         if not items.exists():
-            # Fallback al campo legacy
             return self.get_especialidad_display() if self.especialidad else ''
         return ', '.join(
             item.get_especialidad_display() for item in items
         )
 
     def tiene_especialidad(self, categoria: str) -> bool:
-        """Verifica si el técnico tiene una especialidad específica."""
         if self.especialidades_tecnico.filter(especialidad=categoria).exists():
             return True
-        # Fallback al campo legacy
         return self.especialidad == categoria
 
-    # ── Disponibilidad horaria ──────────────────────────────────────────
 
     def esta_disponible_ahora(self) -> bool:
-        """Verifica si el técnico está en su horario de trabajo ahora."""
         if not self.is_tecnico:
             return False
         ahora = timezone.localtime(timezone.now())
         return self._en_horario(ahora.weekday(), ahora.time())
 
     def esta_disponible_en(self, fecha: date, hora: time) -> bool:
-        """Verifica si el técnico trabaja en ese día y hora."""
         if not self.is_tecnico:
             return False
         dia_semana = fecha.weekday()
         return self._en_horario(dia_semana, hora)
 
     def _en_horario(self, dia_semana: int, hora: time) -> bool:
-        """Verifica si una hora cae dentro del horario semanal del técnico."""
         return self.horarios.filter(
             dia_semana=dia_semana,
             hora_inicio__lte=hora,
@@ -224,33 +208,24 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ).exists()
 
     def get_horario_dia(self, dia_semana: int):
-        """Retorna los bloques de horario para un día de la semana."""
         return self.horarios.filter(dia_semana=dia_semana).order_by('hora_inicio')
 
     def get_horario_fecha(self, fecha: date):
-        """Retorna los bloques de horario para una fecha específica."""
         return self.get_horario_dia(fecha.weekday())
 
     def proximo_horario_disponible(self, desde: datetime | None = None) -> dict | None:
-        """Encuentra el próximo bloque horario disponible en los próximos 7 días.
-
-        Returns:
-            dict con 'fecha', 'hora_inicio', 'hora_fin' o None si no hay disponibilidad.
-        """
         if not self.is_tecnico:
             return None
         if desde is None:
             desde = timezone.localtime(timezone.now())
 
-        for offset in range(8):  # Hoy + 7 días adelante
+        for offset in range(8):
             fecha = (desde + timedelta(days=offset)).date() if offset > 0 else desde.date()
             bloques = self.get_horario_dia(fecha.weekday())
             for bloque in bloques:
                 hora_inicio = bloque.hora_inicio
-                # Si es hoy y la hora ya pasó, saltar
                 if offset == 0 and hora_inicio <= desde.time():
                     hora_inicio = desde.time()
-                    # Verificar que aún quede tiempo en el bloque
                     if hora_inicio >= bloque.hora_fin:
                         continue
                 return {
@@ -262,11 +237,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 
 class TecnicoEspecialidad(models.Model):
-    """Relación M2M entre técnico y especialidades.
-
-    Permite que un técnico tenga múltiples áreas de competencia,
-    con una marcada como principal.
-    """
 
     tecnico = models.ForeignKey(
         CustomUser,
@@ -292,17 +262,11 @@ class TecnicoEspecialidad(models.Model):
         ordering = ['-es_principal', 'especialidad']
 
     def __str__(self) -> str:
-        principal = ' ★' if self.es_principal else ''
+        principal = ' (Principal)' if self.es_principal else ''
         return f'{self.tecnico.get_full_name()} — {self.get_especialidad_display()}{principal}'
 
 
 class HorarioTrabajo(models.Model):
-    """Horario de trabajo semanal de un técnico.
-
-    Define bloques de disponibilidad por día de la semana.
-    Un técnico puede tener múltiples bloques por día
-    (ej. mañana y tarde con pausa de almuerzo).
-    """
 
     class DiaSemana(models.IntegerChoices):
         LUNES = 0, _('Lunes')
@@ -357,14 +321,12 @@ class HorarioTrabajo(models.Model):
 
     @property
     def duracion_horas(self) -> float:
-        """Duración del bloque en horas."""
         inicio = datetime.combine(date.today(), self.hora_inicio)
         fin = datetime.combine(date.today(), self.hora_fin)
         return (fin - inicio).total_seconds() / 3600
 
 
 class EmailVerificationCode(models.Model):
-    """Código de verificación enviado al correo (recuperación de contraseña)."""
 
     class Purpose(models.TextChoices):
         PASSWORD_RESET = 'PASSWORD_RESET', _('Recuperación de contraseña')

@@ -1,14 +1,3 @@
-"""Formularios del módulo Tickets.
-
-Cada formulario está pensado para un rol/contexto específico:
-
-* :class:`TicketCreateForm` — el residente reporta un nuevo ticket.
-* :class:`TicketAdminValidateForm` — el administrador valida la sugerencia
-  IA y asigna técnico (transición PENDIENTE_VALIDACION → ASIGNADO).
-* :class:`TicketTransitionForm` — wrapper genérico para añadir notas a
-  cualquier transición de estado.
-* :class:`MensajeForm` — mensaje en el hilo de comunicación técnico ↔ residente.
-"""
 
 from __future__ import annotations
 
@@ -35,12 +24,10 @@ SELECT_CLASS = (
 TEXTAREA_CLASS = INPUT_CLASS + ' min-h-[140px] resize-y'
 
 
-# Palabras que no aportan información real
 _PALABRAS_VACIAS = re.compile(
     r'^[\s\W]*(test|prueba|asd|asdf|xxx|zzz|111|123|hola|ok|si|no)[\s\W]*$',
     re.IGNORECASE,
 )
-# Estados que se consideran «activos» — un ticket en estos estados bloquea duplicados
 _ESTADOS_ACTIVOS = {
     TicketStatus.CREADO_PENDIENTE_IA,
     TicketStatus.ANALIZADO_POR_IA,
@@ -53,15 +40,6 @@ _ESTADOS_ACTIVOS = {
 
 
 class TicketCreateForm(forms.ModelForm):
-    """Formulario público para creación de tickets por parte del residente.
-
-    Validaciones:
-    · Título: mínimo 10 caracteres, no puede ser texto sin sentido.
-    · Descripción: mínimo 30 caracteres.
-    · Anti-duplicado: no se permite crear un ticket si el inquilino ya tiene
-      uno activo en la misma unidad con título idéntico, o si el título es
-      demasiado similar al de un ticket ya abierto (mismo inquilino).
-    """
 
     def __init__(self, *args, inquilino=None, **kwargs):
         self._inquilino = inquilino
@@ -74,7 +52,6 @@ class TicketCreateForm(forms.ModelForm):
             else:
                 self.fields['unidad'].queryset = Unidad.objects.none()
 
-    # ── Validaciones de campo individual ───────────────────────────────
 
     def clean_titulo(self):
         titulo = self.cleaned_data.get('titulo', '').strip()
@@ -99,7 +76,6 @@ class TicketCreateForm(forms.ModelForm):
             )
         return descripcion
 
-    # ── Validación cruzada (anti-duplicado) ────────────────────────────
 
     def clean(self):
         cleaned = super().clean()
@@ -109,7 +85,6 @@ class TicketCreateForm(forms.ModelForm):
         if not titulo or not unidad or not self._inquilino:
             return cleaned
 
-        # 1. Mismo inquilino + misma unidad + título idéntico + ticket activo
         duplicado_exacto = Ticket.objects.filter(
             inquilino=self._inquilino,
             unidad=unidad,
@@ -123,8 +98,6 @@ class TicketCreateForm(forms.ModelForm):
                 'Espera a que sea resuelto antes de crear uno nuevo.'
             )
 
-        # 2. Mismo inquilino con ticket activo (cualquier título) en la misma unidad
-        #    — bloquea solo si tiene más de 3 tickets activos simultáneos
         activos_count = Ticket.objects.filter(
             inquilino=self._inquilino,
             estado__in=_ESTADOS_ACTIVOS,
@@ -159,27 +132,7 @@ class TicketCreateForm(forms.ModelForm):
 
 
 class TicketAdminValidateForm(forms.ModelForm):
-    """Formulario que usa el administrador para aprobar el ticket.
 
-    El administrador puede:
-      * Ajustar categoría / prioridad si discrepa con la IA.
-      * Asignar el técnico definitivo (puede aceptar el sugerido).
-      * Ver la carga de trabajo y disponibilidad de cada técnico.
-
-    Los técnicos sin capacidad aparecen en un optgroup separado con sus
-    opciones deshabilitadas, evitando selecciones que luego fallarán al
-    agendar (WorkloadExceededError).
-
-    Ya NO programa fecha/hora. Eso lo hace el inquilino en el paso siguiente.
-
-    Nota de implementación: usamos TypedChoiceField (en lugar de ModelChoiceField)
-    porque ModelChoiceField ignora los choices asignados manualmente — siempre
-    itera su queryset. TypedChoiceField respeta la lista de choices y coerce=int
-    convierte el PK. clean_tecnico() resuelve el PK al objeto CustomUser.
-    """
-
-    # Campo declarado explícitamente como TypedChoiceField para respetar
-    # los choices con optgroups construidos dinámicamente en __init__.
     tecnico = forms.TypedChoiceField(
         coerce=int,
         empty_value=None,
@@ -194,9 +147,6 @@ class TicketAdminValidateForm(forms.ModelForm):
     def __init__(self, *args, prioridad: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Categoría y prioridad son obligatorias en esta pantalla aunque el
-        # modelo permita blank/default: aprobar sin clasificar el ticket deja
-        # al técnico sin contexto y falsea las métricas.
         self.fields['categoria'].required = True
         self.fields['categoria'].choices = (
             [('', '— Seleccionar categoría —')] + list(TicketCategory.choices)
@@ -211,7 +161,6 @@ class TicketAdminValidateForm(forms.ModelForm):
         for nombre in ('categoria', 'prioridad'):
             self.fields[nombre].widget.attrs['required'] = 'required'
 
-        # Inferir prioridad desde la instancia si no se pasa explícitamente
         if prioridad is None and self.instance and self.instance.pk:
             prioridad = self.instance.prioridad
 
@@ -220,22 +169,17 @@ class TicketAdminValidateForm(forms.ModelForm):
             is_active=True,
         ).prefetch_related('especialidades_tecnico', 'horarios').order_by('first_name')
 
-        # Separar técnicos con y sin capacidad para la prioridad del ticket
         con_capacidad = []
         sin_capacidad = []
         for t in tecnicos:
             carga = t.carga_trabajo_actual
             limite = t.max_carga_trabajo
-            disponible = t.carga_disponible
-            en_horario = t.esta_disponible_ahora()
-            indicador_horario = '⏰' if en_horario else '💤'
             especialidades = t.especialidades_display or 'Sin especialidad'
 
             tiene_capacidad = prioridad is None or t.puede_aceptar_ticket(prioridad)
-            indicador_carga = '🟢' if disponible > 3 else ('🟡' if disponible > 0 else '🔴')
 
             label = (
-                f'{indicador_carga}{indicador_horario} {t.get_full_name()} '
+                f'{t.get_full_name()} '
                 f'({especialidades}) — '
                 f'Carga: {carga}/{limite}'
             )
@@ -244,13 +188,11 @@ class TicketAdminValidateForm(forms.ModelForm):
             else:
                 sin_capacidad.append((t.pk, label + ' · Sin capacidad'))
 
-        # Construir choices con optgroups: disponibles primero, sobrecargados al final
         choices = [('', '— Seleccionar técnico —')]
         choices.extend(con_capacidad)
         if sin_capacidad:
-            choices.append(('Sin capacidad', sin_capacidad))  # optgroup label legible
+            choices.append(('Sin capacidad', sin_capacidad))
 
-        # Asignar choices y widget personalizado
         self.fields['tecnico'].choices = choices
         self.fields['tecnico'].widget = _TecnicoSelectWidget(
             sobrecargados={pk for pk, _ in sin_capacidad},
@@ -258,12 +200,10 @@ class TicketAdminValidateForm(forms.ModelForm):
         )
         self.fields['tecnico'].widget.choices = choices
 
-        # Pre-seleccionar técnico actual si existe
         if self.instance and self.instance.pk and self.instance.tecnico_id:
             self.fields['tecnico'].initial = self.instance.tecnico_id
 
     def clean_tecnico(self):
-        """Convierte el PK del técnico seleccionado al objeto CustomUser."""
         pk = self.cleaned_data.get('tecnico')
         if not pk:
             raise forms.ValidationError(
@@ -275,13 +215,6 @@ class TicketAdminValidateForm(forms.ModelForm):
             raise forms.ValidationError('Técnico no válido o inactivo.')
 
     def clean(self):
-        """Valida la capacidad del técnico contra la prioridad enviada.
-
-        La lista de choices se construye con la prioridad que tenía el ticket
-        al cargar la página; si el admin la sube en el mismo envío (ej. MEDIA →
-        ALTA) el técnico elegido puede quedarse sin capacidad. Se revalida aquí
-        con los datos realmente enviados.
-        """
         cleaned = super().clean()
         tecnico = cleaned.get('tecnico')
         prioridad = cleaned.get('prioridad') or getattr(self.instance, 'prioridad', None)
@@ -304,16 +237,10 @@ class TicketAdminValidateForm(forms.ModelForm):
         widgets = {
             'categoria': forms.Select(attrs={'class': SELECT_CLASS}),
             'prioridad': forms.Select(attrs={'class': SELECT_CLASS}),
-            # 'tecnico' se gestiona íntegramente en __init__
         }
 
 
 class _TecnicoSelectWidget(forms.Select):
-    """Widget <select> que deshabilita las opciones de técnicos sobrecargados.
-
-    Los técnicos sin capacidad quedan visibles (para transparencia) pero con
-    el atributo ``disabled`` para impedir su selección accidental.
-    """
 
     def __init__(self, *args, sobrecargados: set | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -327,11 +254,6 @@ class _TecnicoSelectWidget(forms.Select):
 
 
 class InquilinoScheduleForm(forms.ModelForm):
-    """Formulario que usa el inquilino para agendar la visita técnica.
-
-    Los campos se rellenan automáticamente al hacer clic en un bloque
-    libre del selector de disponibilidad (JS autocompleta los hidden inputs).
-    """
 
     class Meta:
         model = Ticket
@@ -366,7 +288,6 @@ class InquilinoScheduleForm(forms.ModelForm):
 
 
 class TicketTransitionForm(forms.Form):
-    """Formulario mínimo para cualquier transición que requiera nota."""
 
     nota = forms.CharField(
         label='Nota (opcional)',
@@ -380,11 +301,6 @@ class TicketTransitionForm(forms.Form):
 
 
 class TicketResolutionForm(forms.ModelForm):
-    """Form que el técnico envía al cerrar el ticket.
-
-    Las notas de resolución son obligatorias y deben contener al menos
-    40 caracteres para asegurar que la intervención quede documentada.
-    """
 
     def clean_notas_resolucion(self):
         notas = self.cleaned_data.get('notas_resolucion', '').strip()
@@ -418,7 +334,6 @@ class TicketResolutionForm(forms.ModelForm):
 
 
 class MensajeForm(forms.ModelForm):
-    """Mensaje en el hilo de comunicación técnico ↔ residente."""
 
     class Meta:
         model = MensajeTicket

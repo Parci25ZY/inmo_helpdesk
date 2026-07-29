@@ -1,4 +1,3 @@
-"""Serializers DRF para la API del chatbot."""
 
 from __future__ import annotations
 

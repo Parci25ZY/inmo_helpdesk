@@ -17,7 +17,6 @@ from .forms import (
 from .decorators import admin_required
 
 def user_login(request):
-    """Vista de inicio de sesión"""
     if request.user.is_authenticated:
         return redirect('dashboard')
         
@@ -26,7 +25,6 @@ def user_login(request):
         if form.is_valid():
             email = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-            # Cambiamos email=email por username=email para mayor compatibilidad
             user = authenticate(request, username=email, password=password)
             if user is not None:
                 login(request, user)
@@ -40,7 +38,6 @@ def user_login(request):
 
 
 def password_reset_confirm_page(request):
-    """Página para establecer nueva contraseña tras verificar el correo."""
     if request.user.is_authenticated:
         return redirect('dashboard')
     return render(request, 'accounts/password_reset_confirm.html')
@@ -48,14 +45,12 @@ def password_reset_confirm_page(request):
 
 @require_http_methods(["GET", "POST"])
 def user_logout(request):
-    """Cerrar sesión (Soporta GET y POST para mayor compatibilidad)"""
     logout(request)
     messages.info(request, 'Has cerrado sesión correctamente.')
     return redirect('login')
 
 @admin_required
 def user_list(request):
-    """Listado de usuarios con búsqueda y filtrado (Solo Admin)"""
     search_query = request.GET.get('search', '')
     role_filter = request.GET.get('role', '')
     
@@ -85,7 +80,6 @@ def user_list(request):
 
 @admin_required
 def user_create(request):
-    """Creación de nuevos usuarios por el administrador"""
     if request.method == 'POST':
         form = UserCreateForm(request.POST)
         if form.is_valid():
@@ -103,7 +97,6 @@ def user_create(request):
 
 @admin_required
 def user_edit(request, user_id):
-    """Edición de usuarios existentes por el administrador"""
     user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'POST':
         form = UserEditForm(request.POST, instance=user)
@@ -123,17 +116,6 @@ def user_edit(request, user_id):
 
 @admin_required
 def user_delete(request, user_id):
-    """Eliminación de usuarios por el administrador.
-
-    Si el usuario tiene tickets o mensajes vinculados, no puede eliminarse
-    sin romper la integridad de los registros históricos. En ese caso se
-    desactiva (is_active=False) en lugar de borrar.
-
-    · INQUILINO: sus tickets tienen FK PROTECT → siempre bloqueado si tiene tickets.
-    · TECNICO:   sus tickets asignados tienen SET_NULL (borrable), pero sus mensajes
-                 tienen PROTECT y además no tiene sentido borrar un técnico con
-                 trabajo activo/pasado → se bloquea igual.
-    """
     from django.db.models import ProtectedError
 
     user = get_object_or_404(CustomUser, id=user_id)
@@ -143,7 +125,6 @@ def user_delete(request, user_id):
         return redirect('user_list')
 
     def _get_registros(u):
-        """Devuelve (tiene_registros, tickets_count, mensajes_count) según rol."""
         if u.role == u.Roles.INQUILINO:
             tc = u.tickets_creados.count()
             mc = u.mensajes_ticket.count()
@@ -169,7 +150,6 @@ def user_delete(request, user_id):
             )
             return redirect('user_list')
 
-        # Intentar eliminación física
         try:
             user.delete()
             messages.success(request, f'Usuario {nombre} eliminado correctamente.')
@@ -190,7 +170,6 @@ def user_delete(request, user_id):
 
         return redirect('user_list')
 
-    # GET: precomputar registros vinculados
     tiene_registros, tickets_count, mensajes_count = _get_registros(user)
     return render(request, 'accounts/user_confirm_delete.html', {
         'user_obj': user,
@@ -201,11 +180,6 @@ def user_delete(request, user_id):
 
 @login_required
 def user_profile(request):
-    """Perfil del usuario autenticado.
-
-    Usa ProfileEditForm que solo expone campos seguros (nombre, email, teléfono).
-    No permite cambiar rol, is_active, is_staff ni especialidad.
-    """
     if request.method == 'POST':
         form = ProfileEditForm(request.POST, instance=request.user)
         if form.is_valid():

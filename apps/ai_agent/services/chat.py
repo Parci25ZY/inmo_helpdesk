@@ -1,4 +1,3 @@
-"""Orquestación conversacional del chatbot con RAG."""
 
 from __future__ import annotations
 
@@ -67,7 +66,6 @@ _INFORMATIONAL = frozenset({
 
 
 def _normalize_escalation(result: dict, user_text: str, chunks: list) -> dict:
-    """Evita escalar a técnico cuando la consulta es resoluble con RAG."""
     text = user_text.lower()
     out = dict(result)
 
@@ -109,14 +107,6 @@ def process_user_message(
     asistente_msg: ChatMessage,
     user_msg: ChatMessage | None = None,
 ) -> ChatMessage:
-    """Procesa el mensaje del usuario vinculado y actualiza la respuesta del asistente.
-
-    `user_msg` debe pasarse explícitamente desde el llamador (que ya lo tiene,
-    por haberlo creado un instante antes). Si no se provee, se recurre a buscar
-    por timestamp como fallback — pero `creado_en` tiene resolución de
-    microsegundos y dos mensajes creados en sucesión rápida pueden empatar,
-    haciendo que esta búsqueda no encuentre nada.
-    """
     sesion = asistente_msg.sesion
     if user_msg is None:
         user_msg = (
@@ -134,11 +124,6 @@ def process_user_message(
     try:
         history = _session_history(sesion)
 
-        # LangChain es el único camino de embedding + recuperación + generación
-        # en el caso normal — antes se hacía una recuperación aquí Y otra
-        # (redundante) dentro de generate_with_langchain, duplicando cada
-        # llamada a la API de Gemini. El camino nativo queda solo como
-        # fallback si LangChain falla (dependencia caída, error de parseo, etc.).
         try:
             from apps.ai_agent.services.langchain_rag import generate_with_langchain
             result, chunks = generate_with_langchain(user_msg.contenido, history)

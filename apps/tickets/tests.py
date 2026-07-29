@@ -1,13 +1,3 @@
-"""Tests para apps/tickets.
-
-Cubre la corrección de un bug real: las notificaciones de "nuevo ticket"
-(in-app + los dos correos) se enviaban al crear el ticket, cuando
-`categoria`/`prioridad` todavía eran el default del modelo (OTRO/MEDIA)
-porque la IA aún no lo había clasificado — el correo mostraba una
-prioridad distinta a la que luego se veía en el detalle del ticket.
-Ahora esas notificaciones se disparan en PENDIENTE_VALIDACION, cuando ya
-reflejan la clasificación final.
-"""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -55,7 +45,6 @@ class TestTicketCreatedNotificationTiming:
 
         assert response.status_code == 302
         ticket = Ticket.objects.get(inquilino=inquilino)
-        # En este punto la IA todavía no corrió: valores por defecto del modelo.
         assert ticket.estado == TicketStatus.CREADO_PENDIENTE_IA
         assert ticket.categoria == TicketCategory.OTRO
         assert ticket.prioridad == TicketPriority.MEDIA
@@ -75,7 +64,6 @@ class TestTicketCreatedNotificationTiming:
         assert ticket.categoria == TicketCategory.OTRO
         assert ticket.prioridad == TicketPriority.MEDIA
 
-        # Simula lo que hace _run_ticket_analysis: clasifica y luego transiciona.
         ticket.categoria = TicketCategory.ELECTRICIDAD
         ticket.prioridad = TicketPriority.ALTA
         ticket.save(update_fields=['categoria', 'prioridad'])
@@ -97,8 +85,6 @@ def _make_tecnico_con_horario(email='tecnico@test.com'):
         email=email, password='clave12345', first_name='Gabriel', last_name='Jurado',
         role=CustomUser.Roles.TECNICO,
     )
-    # Horario amplio los 7 días para no depender de en qué día de la
-    # semana caiga "mañana" al correr el test.
     for dia in range(7):
         HorarioTrabajo.objects.create(
             tecnico=tecnico, dia_semana=dia,
@@ -109,14 +95,6 @@ def _make_tecnico_con_horario(email='tecnico@test.com'):
 
 @pytest.mark.django_db
 class TestInquilinoScheduleView:
-    """Regresión: al agendar, el ticket quedaba en ASIGNADO pero con
-    fecha_programada/hora_programada_inicio/hora_programada_fin en None
-    (confirmado en la base de datos real: TKT-0001). La causa era que
-    form.save(commit=False) devuelve la MISMA instancia de `ticket`, así
-    que el ticket.refresh_from_db() posterior borraba esos valores antes
-    de poder persistirlos — y como quedaban en None, ningún otro ticket
-    con el mismo técnico detectaba el conflicto de horario.
-    """
 
     def test_scheduling_persists_fecha_y_hora_not_none(self):
         tecnico = _make_tecnico_con_horario()
@@ -127,7 +105,7 @@ class TestInquilinoScheduleView:
             titulo='Falla eléctrica en mi dormitorio',
             descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
             categoria=TicketCategory.ELECTRICIDAD,
-            prioridad=TicketPriority.ALTA,  # duración 3h
+            prioridad=TicketPriority.ALTA,
             tecnico=tecnico,
         )
         transition_ticket(ticket, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
@@ -150,15 +128,11 @@ class TestInquilinoScheduleView:
         assert response.status_code == 302
         ticket.refresh_from_db()
         assert ticket.estado == TicketStatus.ASIGNADO
-        # Antes del fix, estos tres quedaban en None a pesar de que el
-        # historial ya mostraba el texto con la fecha/hora correctas.
         assert ticket.fecha_programada == fecha
         assert ticket.hora_programada_inicio.strftime('%H:%M') == '09:00'
-        assert ticket.hora_programada_fin.strftime('%H:%M') == '12:00'  # ALTA = 3h
+        assert ticket.hora_programada_fin.strftime('%H:%M') == '12:00'
 
     def test_other_ticket_sees_the_slot_as_occupied(self):
-        """El escenario reportado: un segundo ticket con el mismo técnico
-        debe ver el horario ya agendado como ocupado, no como libre."""
         tecnico = _make_tecnico_con_horario(email='tecnico2@test.com')
         inquilino_a = _make_inquilino_con_unidad(email='residente_a@test.com')
         fecha = timezone.localdate() + timedelta(days=7)
@@ -184,9 +158,6 @@ class TestInquilinoScheduleView:
                 {'fecha_programada': fecha.isoformat(), 'hora_programada_inicio': '09:00'},
             )
 
-        # Ticket A agendado 09:00-12:00. Un segundo ticket (otro inquilino,
-        # mismo técnico, prioridad MEDIA → 2h) consulta la disponibilidad
-        # de ese mismo día.
         bloques = get_hour_blocks_for_day(tecnico, fecha)
         estados_por_hora = {b['hora_inicio'].strftime('%H:%M'): b['estado'] for b in bloques}
         assert estados_por_hora['09:00'] == 'ocupado'
@@ -195,7 +166,6 @@ class TestInquilinoScheduleView:
 
         grupos_2h = find_consecutive_free_blocks(bloques, cantidad=2)
         horas_inicio_libres = {g[0]['hora_inicio'].strftime('%H:%M') for g in grupos_2h}
-        # Ninguno de estos slots debería ofrecerse: todos se solapan con 09:00-12:00.
         assert '08:00' not in horas_inicio_libres
         assert '09:00' not in horas_inicio_libres
         assert '10:00' not in horas_inicio_libres
@@ -204,16 +174,6 @@ class TestInquilinoScheduleView:
 
 @pytest.mark.django_db
 class TestTicketTransitionViewBlocksGenericBypass:
-    """Regresión: `TicketTransitionView` es un endpoint genérico
-    (`/tickets/<pk>/transicion/<destino>/`) y `_ROLE_RULES` permite a
-    INQUILINO ejecutar APROBADO→ASIGNADO — pero esa transición solo debe
-    hacerse vía `InquilinoScheduleView`, que exige fecha/hora. La plantilla
-    ocultaba el botón genérico solo para el admin (`request.user.is_admin`),
-    así que un inquilino SÍ veía y podía enviar el formulario genérico,
-    dejando el ticket en ASIGNADO con fecha_programada/hora_programada_inicio
-    en None (el mismo bug de datos que TestInquilinoScheduleView, pero
-    alcanzable directamente sin pasar por el schedule picker).
-    """
 
     def test_inquilino_cannot_reach_asignado_via_generic_transition_endpoint(self):
         tecnico = _make_tecnico_con_horario(email='tecnico3@test.com')
@@ -239,8 +199,6 @@ class TestTicketTransitionViewBlocksGenericBypass:
 
         assert response.status_code == 302
         ticket.refresh_from_db()
-        # El bloqueo debe impedir la transición por completo, sin dejar
-        # el ticket a medio agendar.
         assert ticket.estado == TicketStatus.APROBADO
         assert ticket.fecha_programada is None
         assert ticket.hora_programada_inicio is None
@@ -267,8 +225,6 @@ class TestTicketTransitionViewBlocksGenericBypass:
 
         assert response.status_code == 302
         ticket.refresh_from_db()
-        # Sin este bloqueo, el ticket pasaría a RESUELTO sin evidencia
-        # ni notas de resolución (solo exigidas por TicketResolveView).
         assert ticket.estado == TicketStatus.EN_PROGRESO
 
     def test_admin_cannot_reach_aprobado_via_generic_transition_endpoint(self):
@@ -290,10 +246,6 @@ class TestTicketTransitionViewBlocksGenericBypass:
 
         assert response.status_code == 302
         ticket.refresh_from_db()
-        # transition_ticket() solo valida técnico/carga de trabajo para el
-        # destino ASIGNADO, no para APROBADO — sin este bloqueo, este POST
-        # dejaría el ticket en APROBADO sin categoría, prioridad ni técnico
-        # asignado, saltándose por completo TicketAdminValidateForm.
         assert ticket.estado == TicketStatus.PENDIENTE_VALIDACION
         assert ticket.tecnico_id is None
 
@@ -307,13 +259,6 @@ def _make_admin(email='admin@test.com'):
 
 @pytest.mark.django_db
 class TestTicketApprovalDoesNotSendDuplicateEmail:
-    """Regresión: al aprobar un ticket, `TicketValidateView` disparaba DOS
-    correos distintos al mismo residente para el mismo evento —
-    `notify_ticket_aprobado` (Celery, texto plano) y
-    `send_ticket_approved_resident_email` (HTML) — porque ambos se llamaban
-    desde el mismo `form_valid()`. Se eliminó el primero (era exactamente
-    el mismo aviso, solo que sin formato) dejando un único envío por evento.
-    """
 
     def test_approving_sends_exactly_one_email_to_resident_and_one_to_tecnico(self):
         admin = _make_admin()
@@ -352,23 +297,16 @@ class TestTicketApprovalDoesNotSendDuplicateEmail:
         ticket.refresh_from_db()
         assert ticket.estado == TicketStatus.APROBADO
 
-        # Exactamente una vez cada uno — no dos correos por el mismo evento.
         mock_resident_email.assert_called_once_with(ticket.pk)
         mock_tech_email.assert_called_once_with(ticket.pk)
 
     def test_notify_ticket_aprobado_no_longer_exists(self):
-        """La tarea duplicada se eliminó por completo, no solo se dejó de llamar."""
         from apps.tickets import notifications
         assert not hasattr(notifications, 'notify_ticket_aprobado')
 
 
 @pytest.mark.django_db
 class TestPdfReportHidesIaAnalysisFromResident:
-    """Regresión: `ticket_report.html` mostraba la sección "Análisis Técnico
-    IA" (``ticket.ia_descripcion_tecnica``) sin condicionar a ``is_audit`` —
-    el residente veía en su PDF de garantía exactamente el análisis interno
-    de la IA que la web le oculta deliberadamente (panel "Análisis IA").
-    """
 
     def _ticket_resuelto_con_analisis_ia(self):
         tecnico = _make_tecnico_con_horario(email='tecnico6@test.com')
@@ -416,10 +354,6 @@ class TestPdfReportHidesIaAnalysisFromResident:
 
 @pytest.mark.django_db
 class TestInquilinoSelfCancel:
-    """El residente ahora puede cancelar su propio ticket, pero solo hasta
-    ASIGNADO — una vez que el técnico está en camino o trabajando
-    (EN_CAMINO/EN_PROGRESO), cancelar requiere coordinarse con el admin.
-    """
 
     def _ticket_en_estado(self, estado, *, tecnico=None, inquilino=None):
         inquilino = inquilino or _make_inquilino_con_unidad(email='residente7@test.com')
@@ -466,7 +400,6 @@ class TestInquilinoSelfCancel:
         )
         assert response.status_code == 302
         ticket.refresh_from_db()
-        # El bloqueo debe impedir la cancelación por completo.
         assert ticket.estado == TicketStatus.EN_CAMINO
 
     def test_inquilino_cannot_cancel_once_en_progreso(self):
@@ -481,8 +414,6 @@ class TestInquilinoSelfCancel:
         assert ticket.estado == TicketStatus.EN_PROGRESO
 
     def test_inquilino_cannot_cancel_ticket_ajeno(self):
-        """El chequeo de pertenencia sigue vigente: no puede cancelar el
-        ticket de OTRO residente aunque el estado sí sea cancelable."""
         ticket, _dueno = self._ticket_en_estado(TicketStatus.CREADO_PENDIENTE_IA)
         otro_inquilino = _make_inquilino_con_unidad(email='vecino8@test.com')
         client = Client()
@@ -495,8 +426,6 @@ class TestInquilinoSelfCancel:
         assert ticket.estado == TicketStatus.CREADO_PENDIENTE_IA
 
     def test_admin_can_still_cancel_from_any_non_terminal_state(self):
-        """Regresión: el admin sigue pudiendo cancelar sin importar el
-        estado (comportamiento previo, no debe romperse)."""
         admin = _make_admin(email='admin2@test.com')
         ticket, _inquilino = self._ticket_en_estado(TicketStatus.EN_PROGRESO)
         client = Client()

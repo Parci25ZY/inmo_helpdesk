@@ -1,4 +1,3 @@
-"""Data migration: copy legacy `especialidad` CharField values to TecnicoEspecialidad M2M."""
 
 from django.db import migrations
 
@@ -17,7 +16,6 @@ def migrate_especialidad_forward(apps, schema_editor):
 
 
 def migrate_especialidad_backward(apps, schema_editor):
-    # Reverse: no-op, the legacy field still holds the original value
     pass
 
 

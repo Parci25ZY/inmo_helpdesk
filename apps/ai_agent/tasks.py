@@ -1,4 +1,3 @@
-"""Tareas Celery para indexación RAG, chatbot y análisis de tickets."""
 
 from __future__ import annotations
 
@@ -12,7 +11,6 @@ from apps.ai_agent.services.rag import index_document
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=5)
 def index_knowledge_document(self, documento_id: int) -> dict:
-    """Indexa un documento de conocimiento (chunks + embeddings)."""
     try:
         documento = KnowledgeDocument.objects.get(pk=documento_id)
         count = index_document(documento)
@@ -24,12 +22,6 @@ def index_knowledge_document(self, documento_id: int) -> dict:
 
 
 def _run_ticket_analysis(ticket_id: int) -> dict:
-    """Lógica de análisis IA de un ticket — usable como tarea o fallback síncrono.
-
-    La IA analiza el ticket, sugiere categoría/prioridad/técnico pero
-    **nunca asigna directamente**. Siempre transiciona a PENDIENTE_VALIDACION
-    para que el administrador valide la pre-asignación.
-    """
     from apps.accounts.models import CustomUser
     from apps.tickets.models import Ticket, TicketStatus
     from apps.tickets.services.assignment import (
@@ -48,7 +40,6 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     if ticket.estado != TicketStatus.CREADO_PENDIENTE_IA:
         return {'skipped': 'estado ya avanzado, sin acción'}
 
-    # Obtener técnicos con su carga de trabajo para informar a la IA
     tecnicos_workload = get_technicians_with_workload()
     tecnicos_data = [
         {
@@ -68,7 +59,6 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
         tecnicos=tecnicos_data,
     )
 
-    # Validar valores contra enums antes de persistir
     from apps.tickets.models import TicketCategory, TicketPriority
     _categorias_validas = set(TicketCategory.values)
     _prioridades_validas = set(TicketPriority.values)
@@ -76,7 +66,6 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
     cat_raw = resultado.get('categoria_sugerida', '')
     pri_raw = resultado.get('prioridad_sugerida', '')
 
-    # Persistir sugerencias IA
     ticket.ia_categoria_sugerida = cat_raw if cat_raw in _categorias_validas else TicketCategory.OTRO
     ticket.ia_prioridad_sugerida = pri_raw if pri_raw in _prioridades_validas else TicketPriority.MEDIA
     ticket.ia_descripcion_tecnica = resultado.get('descripcion_tecnica', '')
@@ -88,12 +77,10 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
         'ia_descripcion_tecnica', 'ia_razon_asignacion', 'ia_confianza',
     ]
 
-    # Asignar categoría y prioridad al ticket basándose en la IA
     ticket.categoria = ticket.ia_categoria_sugerida
     ticket.prioridad = ticket.ia_prioridad_sugerida
     update_fields.extend(['categoria', 'prioridad'])
 
-    # Pre-asignar técnico sugerido (sin confirmar — requiere validación admin)
     tecnico_id = resultado.get('tecnico_sugerido_id') or 0
     tecnico_sugerido = None
     if tecnico_id:
@@ -106,7 +93,6 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
         except CustomUser.DoesNotExist:
             pass
 
-    # Si la IA no sugirió técnico válido, usar el servicio de asignación
     if tecnico_sugerido is None:
         mejor = suggest_best_technician(ticket.categoria, ticket.prioridad)
         if mejor is not None:
@@ -116,13 +102,11 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
 
     ticket.save(update_fields=update_fields)
 
-    # Transicionar a ANALIZADO_POR_IA
     try:
         transition_ticket(ticket, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
     except InvalidTransitionError:
         pass
 
-    # Siempre pasar a PENDIENTE_VALIDACION — el admin debe aprobar
     try:
         nota_validacion = 'Pre-asignación IA pendiente de validación por el administrador.'
         if tecnico_sugerido:
@@ -146,17 +130,15 @@ def _run_ticket_analysis(ticket_id: int) -> dict:
         'prioridad': ticket.ia_prioridad_sugerida,
         'confianza': str(ticket.ia_confianza),
         'tecnico_sugerido': tecnico_sugerido.get_full_name() if tecnico_sugerido else None,
-        'auto_asignado': False,  # Nunca auto-asigna, siempre pre-asignación
+        'auto_asignado': False,
     }
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=10)
 def analyze_ticket(self, ticket_id: int) -> dict:
-    """Analiza un ticket recién creado con Gemini y registra las sugerencias IA."""
     try:
         return _run_ticket_analysis(ticket_id)
     except Exception as exc:
-        # Si Gemini falla, avanzar manualmente a PENDIENTE_VALIDACION como fallback
         try:
             from apps.tickets.models import Ticket, TicketStatus
             from apps.tickets.services.transitions import transition_ticket
@@ -175,12 +157,6 @@ def analyze_ticket(self, ticket_id: int) -> dict:
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=3)
 def process_chat_message(self, mensaje_id: int, user_mensaje_id: int | None = None) -> dict:
-    """Procesa respuesta del asistente para un mensaje de usuario.
-
-    `user_mensaje_id` identifica sin ambigüedad el mensaje del usuario que
-    disparó esta respuesta, evitando que process_user_message tenga que
-    adivinarlo buscando por timestamp (ver chat.py::process_user_message).
-    """
     try:
         asistente_msg = ChatMessage.objects.select_related('sesion').get(pk=mensaje_id)
         user_msg = None

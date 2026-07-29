@@ -1,13 +1,3 @@
-"""Modelos del módulo Tickets.
-
-Implementa la máquina de estados completa definida en el master prompt:
-
-    CREADO_PENDIENTE_IA → ANALIZADO_POR_IA → PENDIENTE_VALIDACION
-    → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO
-
-Adicionalmente se modelan evidencias multimedia y un historial de
-transiciones de estado para auditoría operativa.
-"""
 
 from __future__ import annotations
 
@@ -45,7 +35,6 @@ class TicketCategory(models.TextChoices):
 
 
 class HistorialDisplayItem:
-    """Elemento de presentación de historial adaptado al rol."""
 
     def __init__(self, estado_anterior_display, estado_nuevo_display, creado_en, actor=None, nota=''):
         self.estado_anterior_display = estado_anterior_display
@@ -56,14 +45,7 @@ class HistorialDisplayItem:
 
 
 class Ticket(models.Model):
-    """Orden de mantenimiento dentro del sistema.
 
-    Una sola unidad de negocio que atraviesa toda la máquina de estados.
-    Las transiciones se realizan exclusivamente desde
-    :func:`apps.tickets.services.transitions.transition_ticket`.
-    """
-
-    # ── Relaciones ──────────────────────────────────────────────────────
     unidad = models.ForeignKey(
         'properties.Unidad',
         on_delete=models.PROTECT,
@@ -87,7 +69,6 @@ class Ticket(models.Model):
         verbose_name=_('Técnico Asignado'),
     )
 
-    # ── Datos del incidente ─────────────────────────────────────────────
     titulo = models.CharField(_('Título'), max_length=200)
     descripcion = models.TextField(_('Descripción detallada'))
     categoria = models.CharField(
@@ -98,7 +79,6 @@ class Ticket(models.Model):
         blank=True,
     )
 
-    # ── Máquina de estados ──────────────────────────────────────────────
     estado = models.CharField(
         _('Estado'),
         max_length=30,
@@ -112,7 +92,6 @@ class Ticket(models.Model):
         default=TicketPriority.MEDIA,
     )
 
-    # ── Sugerencia IA (rellenado por ai_agent) ─────────────────────────
     ia_descripcion_tecnica = models.TextField(_('Descripción técnica IA'), blank=True)
     ia_categoria_sugerida = models.CharField(_('Categoría sugerida IA'), max_length=20, blank=True)
     ia_prioridad_sugerida = models.CharField(_('Prioridad sugerida IA'), max_length=10, blank=True)
@@ -135,11 +114,9 @@ class Ticket(models.Model):
         help_text=_('Valor 0.00 – 1.00 reportado por el modelo.'),
     )
 
-    # ── Resolución ──────────────────────────────────────────────────────
     notas_resolucion = models.TextField(_('Notas de resolución'), blank=True)
     resuelto_en = models.DateTimeField(_('Fecha de resolución'), null=True, blank=True)
 
-    # ── Programación de visita ─────────────────────────────────────────
     fecha_programada = models.DateField(
         _('Fecha programada'),
         null=True,
@@ -157,11 +134,9 @@ class Ticket(models.Model):
         blank=True,
     )
 
-    # ── Auditoría ───────────────────────────────────────────────────────
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
-    # Duración de visita según prioridad (en horas)
     VISIT_DURATION: dict[str, int] = {
         'BAJA': 1,
         'MEDIA': 2,
@@ -182,10 +157,8 @@ class Ticket(models.Model):
     def __str__(self) -> str:
         return f'#{self.id:04d} · {self.titulo}'
 
-    # ── Helpers de presentación ─────────────────────────────────────────
     @property
     def codigo(self) -> str:
-        """Identificador legible del ticket: TKT-0001."""
         return f'TKT-{self.id:04d}' if self.id else 'TKT-NUEVO'
 
     @property
@@ -198,43 +171,20 @@ class Ticket(models.Model):
 
     @property
     def is_aprobado(self) -> bool:
-        """True cuando el admin aprobó pero el inquilino aún no agendó."""
         return self.estado == TicketStatus.APROBADO
 
     @property
     def clasificacion_confirmada(self) -> bool:
-        """True cuando categoria/prioridad ya fueron confirmadas por el admin.
-
-        La IA escribe su sugerencia directamente en estos campos apenas
-        analiza el ticket (antes de cualquier validación humana), así que
-        mientras el ticket siga en CREADO_PENDIENTE_IA/ANALIZADO_POR_IA/
-        PENDIENTE_VALIDACION, lo que hay ahí es solo un borrador sin
-        confirmar — no debe mostrarse al residente como si fuera definitivo.
-
-        Se usa `tecnico_id` (no el estado) como señal: es el único campo que
-        SOLO se llena en ``TicketValidateView`` cuando el admin valida, nunca
-        por la IA. Un estado-based check por sí solo falla para tickets
-        cancelados ANTES de validación (ej. la IA nunca llegó a analizarlos
-        por falla/cuota): quedan en CANCELADO con categoria/prioridad en su
-        valor por defecto del modelo, jamás confirmado por nadie.
-        """
         return self.tecnico_id is not None
 
     @property
     def prioridad_pendiente_label(self) -> str:
-        """Texto a mostrar al residente en vez de la prioridad sin confirmar.
-
-        Un ticket cancelado antes de validación nunca va a ser confirmado
-        por nadie — "Por confirmar" quedaría prometiendo una acción que ya
-        no va a ocurrir, así que usa una etiqueta distinta para ese caso.
-        """
         if self.estado == TicketStatus.CANCELADO:
             return 'Sin clasificar'
         return 'Por confirmar'
 
     @property
     def estado_display_simplificado(self) -> str:
-        """Devuelve la etiqueta de estado simplificada: CREADO → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO."""
         if self.estado in {
             TicketStatus.CREADO_PENDIENTE_IA,
             TicketStatus.ANALIZADO_POR_IA,
@@ -245,18 +195,11 @@ class Ticket(models.Model):
         return self.get_estado_display()
 
     def get_estado_display_user(self, user) -> str:
-        """Devuelve la etiqueta de estado simplificada para residente y técnico."""
         if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False):
             return self.get_estado_display()
         return self.estado_display_simplificado
 
     def get_historial_para_usuario(self, user):
-        """Devuelve el historial adaptado al rol del usuario.
-
-        Para Admin: historial completo con todos los estados intermedios.
-        Para Residente y Técnico: progresión limpia
-            CREADO → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO.
-        """
         historial = list(self.historial.all())
         if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False):
             return [
@@ -311,27 +254,12 @@ class Ticket(models.Model):
 
 
 def evidencia_upload_path(instance: 'EvidenciaTicket', filename: str) -> str:
-    """Ruta predecible: tickets/<id>/<reporte|resolucion>/<timestamp>_<filename>.
-
-    Separar por momento evita mezclar en una sola carpeta las fotos que
-    sube el inquilino al reportar con las que sube el técnico al cerrar.
-    El prefijo de timestamp evita colisiones de nombres genéricos (p. ej.
-    dos fotos "IMG_0001.jpg" de teléfonos distintos) y hace que el listado
-    quede ordenado cronológicamente sin depender de metadatos del archivo.
-    Quién subió cada evidencia ya se registra de forma confiable en el
-    campo `subido_por`, así que no hace falta codificarlo en la ruta.
-    """
     carpeta = 'reporte' if instance.momento == EvidenciaTicket.Momento.REPORTE else 'resolucion'
     marca_tiempo = timezone.now().strftime('%Y%m%d-%H%M%S')
     return f'tickets/{instance.ticket_id}/{carpeta}/{marca_tiempo}_{filename}'
 
 
 class EvidenciaTicket(models.Model):
-    """Archivo (foto o documento) adjunto a un ticket.
-
-    Un ticket puede tener N evidencias en el momento de creación
-    (reportadas por el inquilino) y/o al cierre (subidas por el técnico).
-    """
 
     class Momento(models.TextChoices):
         REPORTE = 'REPORTE', _('Reporte inicial')
@@ -368,7 +296,6 @@ class EvidenciaTicket(models.Model):
 
 
 class MensajeTicket(models.Model):
-    """Hilo de comunicación directo entre técnico e inquilino en un ticket."""
 
     ticket = models.ForeignKey(
         Ticket,
@@ -393,7 +320,6 @@ class MensajeTicket(models.Model):
 
 
 class HistorialEstado(models.Model):
-    """Registro auditable de cada transición de estado del ticket."""
 
     ticket = models.ForeignKey(
         Ticket,
@@ -439,7 +365,6 @@ class TipoAlerta(models.TextChoices):
 
 
 class Notificacion(models.Model):
-    """Notificaciones dentro del sistema para el usuario."""
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

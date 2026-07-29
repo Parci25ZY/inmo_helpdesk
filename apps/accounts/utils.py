@@ -10,7 +10,6 @@ from django.core.validators import RegexValidator
 def valida_cedula(value):
     cedula = str(value).strip()
 
-    # Si no hay valor, dejar que la validación blank=True del campo lo maneje
     if not cedula or cedula == 'None':
         return
 

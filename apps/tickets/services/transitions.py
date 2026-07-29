@@ -1,9 +1,3 @@
-"""Máquina de estados de tickets.
-
-Centraliza las reglas de transición y las verificaciones de rol.
-Las vistas y las tasks asíncronas (IA) deben usar exclusivamente
-:func:`transition_ticket` para mover un ticket de un estado a otro.
-"""
 
 from __future__ import annotations
 
@@ -14,11 +8,10 @@ from django.utils import timezone
 
 from apps.tickets.models import HistorialEstado, Ticket, TicketStatus
 
-# ── Mapa de transiciones permitidas ─────────────────────────────────────
 _TRANSITIONS: Mapping[str, Set[str]] = {
     TicketStatus.CREADO_PENDIENTE_IA: {
         TicketStatus.ANALIZADO_POR_IA,
-        TicketStatus.PENDIENTE_VALIDACION,  # fallback si la IA falla
+        TicketStatus.PENDIENTE_VALIDACION,
         TicketStatus.CANCELADO,
     },
     TicketStatus.ANALIZADO_POR_IA: {
@@ -49,8 +42,6 @@ _TRANSITIONS: Mapping[str, Set[str]] = {
     TicketStatus.CANCELADO: set(),
 }
 
-# ── Roles autorizados por transición ────────────────────────────────────
-# Clave: (origen, destino) → conjunto de roles permitidos.
 _ROLE_RULES: Mapping[tuple[str, str], Set[str]] = {
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.ANALIZADO_POR_IA): {'SYSTEM'},
     (TicketStatus.CREADO_PENDIENTE_IA, TicketStatus.PENDIENTE_VALIDACION): {'SYSTEM', 'ADMIN'},
@@ -61,11 +52,6 @@ _ROLE_RULES: Mapping[tuple[str, str], Set[str]] = {
     (TicketStatus.EN_CAMINO, TicketStatus.EN_PROGRESO): {'TECNICO'},
     (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO): {'TECNICO'},
 }
-# La cancelación está permitida desde cualquier no-terminal para ADMIN.
-# El propio INQUILINO también puede cancelar, pero solo hasta ASIGNADO —
-# una vez que el técnico está en camino o trabajando, ya invirtió tiempo
-# y agenda, así que cancelar a partir de ahí requiere coordinarse con el
-# administrador en vez de ser una acción unilateral del residente.
 _ESTADOS_CANCELABLES_POR_INQUILINO: Set[str] = {
     TicketStatus.CREADO_PENDIENTE_IA,
     TicketStatus.ANALIZADO_POR_IA,
@@ -76,18 +62,14 @@ _ESTADOS_CANCELABLES_POR_INQUILINO: Set[str] = {
 
 
 class InvalidTransitionError(Exception):
-    """Se intenta una transición que no existe en la máquina."""
+    pass
 
 
 class TransitionPermissionError(Exception):
-    """El actor no tiene permisos para esa transición."""
+    pass
 
 
 def allowed_transitions_for(ticket: Ticket, *, role: str | None = None) -> Iterable[str]:
-    """Devuelve la lista de estados destino válidos para el ticket actual.
-
-    Si se pasa ``role`` filtra adicionalmente por las reglas de rol.
-    """
     destinos = _TRANSITIONS.get(ticket.estado, set())
     if role is None:
         return destinos
@@ -100,7 +82,6 @@ def allowed_transitions_for(ticket: Ticket, *, role: str | None = None) -> Itera
 
 
 def _role_allowed_for(origen: str, destino: str) -> Set[str]:
-    """Conjunto de roles permitidos para una transición específica."""
     if destino == TicketStatus.CANCELADO:
         roles = {'ADMIN', 'SYSTEM'}
         if origen in _ESTADOS_CANCELABLES_POR_INQUILINO:
@@ -110,7 +91,7 @@ def _role_allowed_for(origen: str, destino: str) -> Set[str]:
 
 
 class WorkloadExceededError(Exception):
-    """El técnico no tiene capacidad para aceptar más tickets."""
+    pass
 
 
 @transaction.atomic
@@ -122,21 +103,6 @@ def transition_ticket(
     actor_role: str | None = None,
     nota: str = '',
 ) -> Ticket:
-    """Mueve un ticket a un nuevo estado de forma transaccional.
-
-    Args:
-        ticket: instancia a mutar.
-        nuevo_estado: valor de :class:`TicketStatus`.
-        actor: usuario que ejecuta la acción (None para tareas del sistema).
-        actor_role: 'ADMIN' | 'TECNICO' | 'INQUILINO' | 'SYSTEM'.
-            Si es None se infiere desde ``actor.role``.
-        nota: comentario opcional añadido al historial.
-
-    Raises:
-        InvalidTransitionError: si la transición no existe.
-        TransitionPermissionError: si el rol no puede ejecutarla.
-        WorkloadExceededError: si el técnico asignado supera su límite de carga.
-    """
     estado_actual = ticket.estado
     if nuevo_estado not in _TRANSITIONS.get(estado_actual, set()):
         raise InvalidTransitionError(
@@ -152,7 +118,6 @@ def transition_ticket(
             f'El rol {actor_role} no puede ejecutar la transición {estado_actual} → {nuevo_estado}.'
         )
 
-    # Validar carga de trabajo al asignar
     if nuevo_estado == TicketStatus.ASIGNADO:
         if not ticket.tecnico:
             raise InvalidTransitionError(
@@ -181,7 +146,6 @@ def transition_ticket(
         nota=nota,
     )
 
-    # ── Notificaciones automáticas in-app ──
     from apps.tickets.services.notify import notify_transition
     notify_transition(
         ticket,

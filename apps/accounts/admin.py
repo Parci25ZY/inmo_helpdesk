@@ -5,18 +5,15 @@ from .forms import UserCreateForm, UserEditForm
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    # Usar los formularios personalizados estilizados
     add_form = UserCreateForm
     form = UserEditForm
     model = CustomUser
     
-    # Configuración de la lista
     list_display = ['email', 'first_name', 'last_name', 'role', 'especialidad', 'is_active', 'is_staff', 'date_joined']
     list_filter = ['role', 'is_active', 'is_staff', 'date_joined']
     search_fields = ['email', 'first_name', 'last_name', 'phone']
     ordering = ['-date_joined']
     
-    # Organización de los campos al editar
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Información Personal', {'fields': ('first_name', 'last_name', 'phone')}),
@@ -24,7 +21,6 @@ class CustomUserAdmin(UserAdmin):
         ('Fechas Importantes', {'fields': ('date_joined', 'last_login')}),
     )
     
-    # Organización de los campos al crear un nuevo usuario
     add_fieldsets = (
         (None, {
             'classes': ('wide',),

@@ -1,11 +1,3 @@
-"""Tests para apps/properties.
-
-Cubre la corrección de un bug real: `EdificioDeleteView`/`UnidadDeleteView`
-no capturaban `ProtectedError`. `Ticket.unidad` usa `on_delete=PROTECT`,
-así que borrar una unidad (o un edificio cuya cascada llega a esa unidad)
-con al menos un ticket histórico lanzaba una excepción no controlada →
-error 500 para una acción común de administración.
-"""
 from __future__ import annotations
 
 import pytest
@@ -55,7 +47,6 @@ class TestDeleteWithLinkedTickets:
         response = client.post(reverse('unidad_delete', kwargs={'pk': unidad.pk}))
 
         assert response.status_code == 302
-        # La unidad debe seguir existiendo: el borrado se bloqueó, no crasheó.
         assert Unidad.objects.filter(pk=unidad.pk).exists()
 
     def test_edificio_delete_with_ticket_in_its_unidad_shows_error_instead_of_500(self):
@@ -80,7 +71,6 @@ class TestDeleteWithLinkedTickets:
         assert Edificio.objects.filter(pk=edificio.pk).exists()
 
     def test_unidad_delete_without_tickets_still_works(self):
-        """El fix no debe romper el caso feliz: sin tickets, sí se borra."""
         admin = _make_admin(email='admin3@test.com')
         edificio = Edificio.objects.create(
             nombre='Torre Test 3', codigo='TT-03', direccion='Calle Falsa 789',

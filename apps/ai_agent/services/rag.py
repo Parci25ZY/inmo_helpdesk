@@ -1,4 +1,3 @@
-"""Pipeline RAG: indexación y recuperación semántica."""
 
 from __future__ import annotations
 
@@ -19,18 +18,8 @@ def _cosine_similarity_batch(
     query: np.ndarray,
     matrix: np.ndarray,
 ) -> np.ndarray:
-    """Calcula similitud coseno entre un vector query y una matriz de embeddings.
-
-    Args:
-        query: vector 1-D de shape (d,).
-        matrix: matriz 2-D de shape (n, d).
-
-    Returns:
-        Array 1-D de shape (n,) con las similitudes.
-    """
     if matrix.size == 0:
         return np.array([])
-    # Normalizar
     query_norm = query / (np.linalg.norm(query) + 1e-10)
     norms = np.linalg.norm(matrix, axis=1, keepdims=True) + 1e-10
     matrix_norm = matrix / norms
@@ -38,17 +27,10 @@ def _cosine_similarity_batch(
 
 
 def index_document(documento: KnowledgeDocument) -> int:
-    """Genera chunks y embeddings para un documento. Retorna cantidad indexada.
-
-    Usa ThreadPoolExecutor para paralelizar las llamadas a la API de
-    embeddings, reduciendo la latencia total de O(n × latencia) a
-    ~O(latencia) con suficientes workers.
-    """
     fragmentos = chunk_text(documento.contenido)
     if not fragmentos:
         return 0
 
-    # Generar embeddings en paralelo (máx 4 workers para no saturar la API)
     embeddings: dict[int, list[float]] = {}
 
     def _embed(idx: int, texto: str) -> tuple[int, list[float]]:
@@ -92,11 +74,6 @@ def retrieve_relevant_chunks(
     top_k: int = 5,
     min_score: float = 0.28,
 ) -> list[KnowledgeChunk]:
-    """Recupera los fragmentos más relevantes por similitud coseno.
-
-    Usa NumPy para cálculo vectorizado batch en lugar de iterar uno
-    por uno en Python puro. ~100x más rápido para colecciones grandes.
-    """
     chunks = list(
         KnowledgeChunk.objects
         .filter(documento__activo=True, documento__indexado=True)
@@ -106,7 +83,6 @@ def retrieve_relevant_chunks(
     if not chunks:
         return []
 
-    # Filtrar chunks sin embedding válido
     valid_chunks = [c for c in chunks if c.embedding]
     if not valid_chunks:
         return []
@@ -118,7 +94,6 @@ def retrieve_relevant_chunks(
 
     scores = _cosine_similarity_batch(query_vec, embedding_matrix)
 
-    # Filtrar por score mínimo y ordenar
     mask = scores >= min_score
     if not mask.any():
         return []

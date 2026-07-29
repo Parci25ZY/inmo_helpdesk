@@ -1,4 +1,3 @@
-"""API de autenticación: JWT y recuperación de contraseña."""
 
 from django.contrib.auth import login
 from rest_framework import status
@@ -80,5 +79,4 @@ class PasswordResetConfirmAPIView(APIView):
         })
 
 
-# Re-export para urls
 TokenRefreshAPIView = TokenRefreshView

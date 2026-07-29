@@ -1,4 +1,3 @@
-"""Notificaciones nativas de tickets por correo electrónico mediante Celery."""
 
 import logging
 from celery import shared_task
@@ -10,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def notify_nuevo_ticket(self, ticket_id: int) -> bool:
-    """Envía un correo directo al administrador cuando se crea un ticket."""
     from apps.tickets.models import Ticket
     try:
         ticket = Ticket.objects.select_related(
@@ -38,7 +36,7 @@ def notify_nuevo_ticket(self, ticket_id: int) -> bool:
             subject=asunto,
             message=mensaje,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.EMAIL_HOST_USER],  # Correo del admin
+            recipient_list=[settings.EMAIL_HOST_USER],
             fail_silently=False,
         )
         logger.info("Notificación de correo enviada para nuevo ticket %s.", ticket.codigo)
@@ -48,9 +46,4 @@ def notify_nuevo_ticket(self, ticket_id: int) -> bool:
         raise self.retry(exc=exc)
 
 
-# Nota: existía aquí notify_ticket_aprobado (correo de texto plano al
-# residente al aprobar) — se eliminó porque duplicaba exactamente el mismo
-# aviso que ya envía send_ticket_approved_resident_email (HTML), disparado
-# desde el mismo punto en TicketValidateView.form_valid(). El residente
-# recibía dos correos distintos por una sola aprobación.
 

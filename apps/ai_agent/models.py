@@ -1,4 +1,3 @@
-"""Modelos del agente IA: base de conocimiento RAG y conversaciones."""
 
 from __future__ import annotations
 
@@ -20,7 +19,6 @@ class KnowledgeCategory(models.TextChoices):
 
 
 class KnowledgeDocument(models.Model):
-    """Documento fuente indexado para RAG (FAQs, reglamento, manuales)."""
 
     titulo = models.CharField(_('Título'), max_length=200)
     categoria = models.CharField(
@@ -49,7 +47,6 @@ class KnowledgeDocument(models.Model):
 
 
 class KnowledgeChunk(models.Model):
-    """Fragmento de un documento con su embedding vectorial (JSON)."""
 
     documento = models.ForeignKey(
         KnowledgeDocument,
@@ -80,7 +77,6 @@ class KnowledgeChunk(models.Model):
 
 
 class ChatSession(models.Model):
-    """Sesión conversacional del chatbot por usuario."""
 
     class Estado(models.TextChoices):
         ACTIVA = 'ACTIVA', _('Activa')
@@ -123,7 +119,6 @@ class ChatSession(models.Model):
 
 
 class ChatMessage(models.Model):
-    """Mensaje individual dentro de una sesión de chat."""
 
     class Rol(models.TextChoices):
         USUARIO = 'USUARIO', _('Usuario')

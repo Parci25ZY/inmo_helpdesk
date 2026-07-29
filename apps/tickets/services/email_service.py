@@ -1,12 +1,3 @@
-"""Servicio de notificaciones por correo electrónico SMTP.
-
-Envía correos HTML en los eventos clave del ciclo de vida del ticket:
-  1. Ticket creado           → Admin(s)
-  2. Ticket aprobado         → Residente (agendar cita)
-  3. Ticket aprobado         → Técnico (detalles del ticket)
-  4. Cita agendada           → Técnico
-  5. Ticket resuelto         → Residente
-"""
 
 from __future__ import annotations
 
@@ -22,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def _get_admin_emails() -> list[str]:
-    """Retorna lista de correos de todos los administradores activos."""
     return list(
         CustomUser.objects.filter(
             role=CustomUser.Roles.ADMIN,
@@ -32,14 +22,13 @@ def _get_admin_emails() -> list[str]:
 
 
 def _send(*, subject: str, html_body: str, recipient_list: list[str]) -> bool:
-    """Wrapper centralizado de envío con manejo de errores."""
     if not recipient_list:
         logger.warning("No hay destinatarios para el correo: %s", subject)
         return False
     try:
         send_mail(
             subject=subject,
-            message='',  # texto plano vacío, se usa html_message
+            message='',
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=recipient_list,
             html_message=html_body,
@@ -52,10 +41,8 @@ def _send(*, subject: str, html_body: str, recipient_list: list[str]) -> bool:
         return False
 
 
-# ── 1. Ticket creado → Admin(s) ─────────────────────────────────────────
 
 def send_ticket_created_email(ticket_id: int) -> bool:
-    """Notifica a los administradores que un residente creó un ticket."""
     from apps.tickets.models import Ticket
 
     try:
@@ -81,10 +68,8 @@ def send_ticket_created_email(ticket_id: int) -> bool:
     )
 
 
-# ── 2. Ticket aprobado → Residente (agendar cita) ──────────────────────
 
 def send_ticket_approved_resident_email(ticket_id: int) -> bool:
-    """Notifica al residente que su ticket fue aprobado y debe agendar cita."""
     from apps.tickets.models import Ticket
 
     try:
@@ -109,10 +94,8 @@ def send_ticket_approved_resident_email(ticket_id: int) -> bool:
     )
 
 
-# ── 3. Ticket aprobado → Técnico (detalles del ticket) ─────────────────
 
 def send_ticket_approved_tech_email(ticket_id: int) -> bool:
-    """Notifica al técnico que se le asignó un nuevo ticket."""
     from apps.tickets.models import Ticket
 
     try:
@@ -137,10 +120,8 @@ def send_ticket_approved_tech_email(ticket_id: int) -> bool:
     )
 
 
-# ── 4. Cita agendada → Técnico ─────────────────────────────────────────
 
 def send_ticket_scheduled_email(ticket_id: int) -> bool:
-    """Notifica al técnico que el residente agendó la visita."""
     from apps.tickets.models import Ticket
 
     try:
@@ -168,10 +149,8 @@ def send_ticket_scheduled_email(ticket_id: int) -> bool:
 
 
 
-# ── 5. Ticket resuelto → Residente ─────────────────────────────────────
 
 def send_ticket_resolved_email(ticket_id: int) -> bool:
-    """Notifica al residente que su problema fue resuelto."""
     from apps.tickets.models import Ticket
 
     try:
@@ -196,10 +175,8 @@ def send_ticket_resolved_email(ticket_id: int) -> bool:
     )
 
 
-# ── 6. Ticket resuelto → Admin(s) (cierre del ciclo) ───────────────────
 
 def send_ticket_resolved_admin_email(ticket_id: int) -> bool:
-    """Notifica a los administradores que el técnico cerró el ticket."""
     from apps.tickets.models import Ticket
 
     try:

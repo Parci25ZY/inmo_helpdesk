@@ -1,4 +1,3 @@
-"""API REST del chatbot (DRF)."""
 
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ from apps.ai_agent.tasks import process_chat_message
 
 
 class ActiveChatSessionView(APIView):
-    """Obtiene o crea la sesión activa del usuario autenticado."""
 
     permission_classes = [IsAuthenticated]
 
@@ -35,7 +33,6 @@ class ActiveChatSessionView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """Cierra sesión actual y crea una nueva."""
         ChatSession.objects.filter(
             usuario=request.user,
             estado=ChatSession.Estado.ACTIVA,
@@ -48,7 +45,6 @@ class ActiveChatSessionView(APIView):
 
 
 class ChatMessageSendView(APIView):
-    """Envía un mensaje del usuario y encola la respuesta del asistente."""
 
     permission_classes = [IsAuthenticated]
 
@@ -98,7 +94,6 @@ class ChatMessageSendView(APIView):
 
 
 class ChatMessageDetailView(APIView):
-    """Consulta el estado de un mensaje (polling)."""
 
     permission_classes = [IsAuthenticated]
 
