@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -201,6 +202,37 @@ class Ticket(models.Model):
         return self.estado == TicketStatus.APROBADO
 
     @property
+    def clasificacion_confirmada(self) -> bool:
+        """True cuando categoria/prioridad ya fueron confirmadas por el admin.
+
+        La IA escribe su sugerencia directamente en estos campos apenas
+        analiza el ticket (antes de cualquier validación humana), así que
+        mientras el ticket siga en CREADO_PENDIENTE_IA/ANALIZADO_POR_IA/
+        PENDIENTE_VALIDACION, lo que hay ahí es solo un borrador sin
+        confirmar — no debe mostrarse al residente como si fuera definitivo.
+
+        Se usa `tecnico_id` (no el estado) como señal: es el único campo que
+        SOLO se llena en ``TicketValidateView`` cuando el admin valida, nunca
+        por la IA. Un estado-based check por sí solo falla para tickets
+        cancelados ANTES de validación (ej. la IA nunca llegó a analizarlos
+        por falla/cuota): quedan en CANCELADO con categoria/prioridad en su
+        valor por defecto del modelo, jamás confirmado por nadie.
+        """
+        return self.tecnico_id is not None
+
+    @property
+    def prioridad_pendiente_label(self) -> str:
+        """Texto a mostrar al residente en vez de la prioridad sin confirmar.
+
+        Un ticket cancelado antes de validación nunca va a ser confirmado
+        por nadie — "Por confirmar" quedaría prometiendo una acción que ya
+        no va a ocurrir, así que usa una etiqueta distinta para ese caso.
+        """
+        if self.estado == TicketStatus.CANCELADO:
+            return 'Sin clasificar'
+        return 'Por confirmar'
+
+    @property
     def estado_display_simplificado(self) -> str:
         """Devuelve la etiqueta de estado simplificada: CREADO → ASIGNADO → EN_CAMINO → EN_PROGRESO → RESUELTO."""
         if self.estado in {
@@ -279,8 +311,19 @@ class Ticket(models.Model):
 
 
 def evidencia_upload_path(instance: 'EvidenciaTicket', filename: str) -> str:
-    """Ruta predecible: tickets/<id>/<momento>/<filename>."""
-    return f'tickets/{instance.ticket_id}/evidencias/{filename}'
+    """Ruta predecible: tickets/<id>/<reporte|resolucion>/<timestamp>_<filename>.
+
+    Separar por momento evita mezclar en una sola carpeta las fotos que
+    sube el inquilino al reportar con las que sube el técnico al cerrar.
+    El prefijo de timestamp evita colisiones de nombres genéricos (p. ej.
+    dos fotos "IMG_0001.jpg" de teléfonos distintos) y hace que el listado
+    quede ordenado cronológicamente sin depender de metadatos del archivo.
+    Quién subió cada evidencia ya se registra de forma confiable en el
+    campo `subido_por`, así que no hace falta codificarlo en la ruta.
+    """
+    carpeta = 'reporte' if instance.momento == EvidenciaTicket.Momento.REPORTE else 'resolucion'
+    marca_tiempo = timezone.now().strftime('%Y%m%d-%H%M%S')
+    return f'tickets/{instance.ticket_id}/{carpeta}/{marca_tiempo}_{filename}'
 
 
 class EvidenciaTicket(models.Model):

@@ -1,25 +1,20 @@
 {% if request.user.is_authenticated %}
 <!-- Large Role Title -->
 <div class="pb-4 select-none shrink-0" style="font-family: 'Space Grotesk', sans-serif;">
-    <div class="border-b border-zinc-200 pb-3 flex flex-wrap items-baseline justify-between gap-4">
-        <div>
-            <span class="text-[0.65rem] font-mono uppercase tracking-[0.25em] text-zinc-400">
-                Rol Autenticado
-            </span>
-            <h2 class="text-3xl sm:text-4xl font-black tracking-tight uppercase mt-0.5
-                {% if request.user.role == 'ADMIN' %}
-                    text-indigo-600
-                {% elif request.user.role == 'TECNICO' %}
-                    text-amber-600
-                {% else %}
-                    text-emerald-600
-                {% endif %}">
-                {{ request.user.get_role_display }}
-            </h2>
-        </div>
-        <div class="font-mono text-[0.65rem] text-zinc-400">
-            <span>{{ request.user.email }}</span>
-        </div>
+    <div class="border-b border-zinc-200 pb-3">
+        <span class="text-[0.65rem] font-mono uppercase tracking-[0.25em] text-zinc-400">
+            Rol Autenticado
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight uppercase mt-0.5
+            {% if request.user.role == 'ADMIN' %}
+                text-indigo-600
+            {% elif request.user.role == 'TECNICO' %}
+                text-amber-600
+            {% else %}
+                text-emerald-600
+            {% endif %}">
+            {{ request.user.get_role_display }}
+        </h2>
     </div>
 </div>
 {% endif %}

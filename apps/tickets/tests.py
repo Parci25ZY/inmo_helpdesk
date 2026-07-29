@@ -270,3 +270,240 @@ class TestTicketTransitionViewBlocksGenericBypass:
         # Sin este bloqueo, el ticket pasaría a RESUELTO sin evidencia
         # ni notas de resolución (solo exigidas por TicketResolveView).
         assert ticket.estado == TicketStatus.EN_PROGRESO
+
+    def test_admin_cannot_reach_aprobado_via_generic_transition_endpoint(self):
+        admin = _make_admin(email='admin-bypass@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente-bypass@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            estado=TicketStatus.PENDIENTE_VALIDACION,
+        )
+
+        client = Client()
+        client.force_login(admin)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.APROBADO}),
+        )
+
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        # transition_ticket() solo valida técnico/carga de trabajo para el
+        # destino ASIGNADO, no para APROBADO — sin este bloqueo, este POST
+        # dejaría el ticket en APROBADO sin categoría, prioridad ni técnico
+        # asignado, saltándose por completo TicketAdminValidateForm.
+        assert ticket.estado == TicketStatus.PENDIENTE_VALIDACION
+        assert ticket.tecnico_id is None
+
+
+def _make_admin(email='admin@test.com'):
+    return CustomUser.objects.create_user(
+        email=email, password='clave12345', first_name='Ada', last_name='Admin',
+        role=CustomUser.Roles.ADMIN,
+    )
+
+
+@pytest.mark.django_db
+class TestTicketApprovalDoesNotSendDuplicateEmail:
+    """Regresión: al aprobar un ticket, `TicketValidateView` disparaba DOS
+    correos distintos al mismo residente para el mismo evento —
+    `notify_ticket_aprobado` (Celery, texto plano) y
+    `send_ticket_approved_resident_email` (HTML) — porque ambos se llamaban
+    desde el mismo `form_valid()`. Se eliminó el primero (era exactamente
+    el mismo aviso, solo que sin formato) dejando un único envío por evento.
+    """
+
+    def test_approving_sends_exactly_one_email_to_resident_and_one_to_tecnico(self):
+        admin = _make_admin()
+        tecnico = _make_tecnico_con_horario(email='tecnico5@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente5@test.com')
+        ticket = Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+        )
+        transition_ticket(ticket, nuevo_estado=TicketStatus.ANALIZADO_POR_IA, actor_role='SYSTEM')
+        transition_ticket(ticket, nuevo_estado=TicketStatus.PENDIENTE_VALIDACION, actor_role='SYSTEM')
+
+        client = Client()
+        client.force_login(admin)
+
+        with patch('apps.tickets.notifications.notify_nuevo_ticket.delay'), \
+             patch('apps.tickets.services.email_service.send_ticket_created_email'), \
+             patch(
+                 'apps.tickets.services.email_service.send_ticket_approved_resident_email',
+             ) as mock_resident_email, \
+             patch(
+                 'apps.tickets.services.email_service.send_ticket_approved_tech_email',
+             ) as mock_tech_email:
+            response = client.post(
+                reverse('ticket_validate', kwargs={'pk': ticket.pk}),
+                {
+                    'categoria': TicketCategory.ELECTRICIDAD,
+                    'prioridad': TicketPriority.ALTA,
+                    'tecnico': tecnico.pk,
+                },
+            )
+
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.APROBADO
+
+        # Exactamente una vez cada uno — no dos correos por el mismo evento.
+        mock_resident_email.assert_called_once_with(ticket.pk)
+        mock_tech_email.assert_called_once_with(ticket.pk)
+
+    def test_notify_ticket_aprobado_no_longer_exists(self):
+        """La tarea duplicada se eliminó por completo, no solo se dejó de llamar."""
+        from apps.tickets import notifications
+        assert not hasattr(notifications, 'notify_ticket_aprobado')
+
+
+@pytest.mark.django_db
+class TestPdfReportHidesIaAnalysisFromResident:
+    """Regresión: `ticket_report.html` mostraba la sección "Análisis Técnico
+    IA" (``ticket.ia_descripcion_tecnica``) sin condicionar a ``is_audit`` —
+    el residente veía en su PDF de garantía exactamente el análisis interno
+    de la IA que la web le oculta deliberadamente (panel "Análisis IA").
+    """
+
+    def _ticket_resuelto_con_analisis_ia(self):
+        tecnico = _make_tecnico_con_horario(email='tecnico6@test.com')
+        inquilino = _make_inquilino_con_unidad(email='residente6@test.com')
+        return Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.ALTA,
+            tecnico=tecnico,
+            estado=TicketStatus.RESUELTO,
+            ia_descripcion_tecnica='Posible falla en el balastro del fluorescente.',
+            notas_resolucion='Se reemplazó el balastro dañado y se probó el circuito.',
+        )
+
+    def _render(self, ticket, *, is_audit):
+        from django.template.loader import render_to_string
+        return render_to_string('tickets/pdf/ticket_report.html', {
+            'ticket': ticket,
+            'edificio': ticket.unidad.edificio,
+            'unidad': ticket.unidad,
+            'inquilino': ticket.inquilino,
+            'tecnico': ticket.tecnico,
+            'evidencias_reporte': [],
+            'evidencias_resolucion': [],
+            'historial': list(ticket.historial.all()) if is_audit else [],
+            'is_audit': is_audit,
+            'fecha_generacion': timezone.now(),
+        })
+
+    def test_resident_pdf_does_not_include_ia_analysis(self):
+        ticket = self._ticket_resuelto_con_analisis_ia()
+        html = self._render(ticket, is_audit=False)
+        assert 'Análisis Técnico IA' not in html
+        assert ticket.ia_descripcion_tecnica not in html
+
+    def test_admin_pdf_still_includes_ia_analysis(self):
+        ticket = self._ticket_resuelto_con_analisis_ia()
+        html = self._render(ticket, is_audit=True)
+        assert 'Análisis Técnico IA' in html
+        assert ticket.ia_descripcion_tecnica in html
+
+
+@pytest.mark.django_db
+class TestInquilinoSelfCancel:
+    """El residente ahora puede cancelar su propio ticket, pero solo hasta
+    ASIGNADO — una vez que el técnico está en camino o trabajando
+    (EN_CAMINO/EN_PROGRESO), cancelar requiere coordinarse con el admin.
+    """
+
+    def _ticket_en_estado(self, estado, *, tecnico=None, inquilino=None):
+        inquilino = inquilino or _make_inquilino_con_unidad(email='residente7@test.com')
+        tecnico = tecnico or _make_tecnico_con_horario(email='tecnico7@test.com')
+        return Ticket.objects.create(
+            inquilino=inquilino,
+            unidad=inquilino.unidad_asignada,
+            titulo='Falla eléctrica en mi dormitorio',
+            descripcion='La luz de mi cuarto parpadea y hace un ruido extraño.',
+            categoria=TicketCategory.ELECTRICIDAD,
+            prioridad=TicketPriority.MEDIA,
+            tecnico=tecnico,
+            estado=estado,
+        ), inquilino
+
+    def test_inquilino_can_cancel_from_creado_pendiente_ia(self):
+        ticket, inquilino = self._ticket_en_estado(TicketStatus.CREADO_PENDIENTE_IA)
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.CANCELADO
+
+    def test_inquilino_can_cancel_from_asignado(self):
+        ticket, inquilino = self._ticket_en_estado(TicketStatus.ASIGNADO)
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.CANCELADO
+
+    def test_inquilino_cannot_cancel_once_tecnico_en_camino(self):
+        ticket, inquilino = self._ticket_en_estado(TicketStatus.EN_CAMINO)
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        # El bloqueo debe impedir la cancelación por completo.
+        assert ticket.estado == TicketStatus.EN_CAMINO
+
+    def test_inquilino_cannot_cancel_once_en_progreso(self):
+        ticket, inquilino = self._ticket_en_estado(TicketStatus.EN_PROGRESO)
+        client = Client()
+        client.force_login(inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.EN_PROGRESO
+
+    def test_inquilino_cannot_cancel_ticket_ajeno(self):
+        """El chequeo de pertenencia sigue vigente: no puede cancelar el
+        ticket de OTRO residente aunque el estado sí sea cancelable."""
+        ticket, _dueno = self._ticket_en_estado(TicketStatus.CREADO_PENDIENTE_IA)
+        otro_inquilino = _make_inquilino_con_unidad(email='vecino8@test.com')
+        client = Client()
+        client.force_login(otro_inquilino)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.CREADO_PENDIENTE_IA
+
+    def test_admin_can_still_cancel_from_any_non_terminal_state(self):
+        """Regresión: el admin sigue pudiendo cancelar sin importar el
+        estado (comportamiento previo, no debe romperse)."""
+        admin = _make_admin(email='admin2@test.com')
+        ticket, _inquilino = self._ticket_en_estado(TicketStatus.EN_PROGRESO)
+        client = Client()
+        client.force_login(admin)
+        response = client.post(
+            reverse('ticket_transition', kwargs={'pk': ticket.pk, 'destino': TicketStatus.CANCELADO}),
+        )
+        assert response.status_code == 302
+        ticket.refresh_from_db()
+        assert ticket.estado == TicketStatus.CANCELADO

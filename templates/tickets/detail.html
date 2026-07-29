@@ -46,8 +46,10 @@
                             <span class="font-mono text-xs font-bold text-zinc-400">{{ ticket.codigo }}</span>
                             <span class="text-zinc-300">·</span>
                             {% include 'tickets/partials/_status_badge.html' with estado=ticket.estado display=estado_display_user|default:ticket.get_estado_display %}
+                            {% if not user.is_inquilino or ticket.clasificacion_confirmada %}
                             {% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}
                             {% if ticket.categoria %}<span class="inline-flex items-center px-2 py-1 text-[0.65rem] font-mono tracking-widest uppercase border border-zinc-300 text-zinc-600 bg-zinc-50">{{ ticket.get_categoria_display }}</span>{% endif %}
+                            {% endif %}
                         </div>
                         <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight leading-tight">{{ ticket.titulo }}</h2>
                         <p class="mt-3 text-sm text-zinc-500 leading-relaxed">
@@ -87,7 +89,10 @@
                     <p class="text-sm text-zinc-800 leading-relaxed whitespace-pre-wrap">{{ ticket.descripcion }}</p>
                 </section>
 
-                <!-- Sugerencia IA -->
+                <!-- Sugerencia IA — solo admin/técnico. El residente no debe ver la
+                     clasificación interna (confianza, categoría/prioridad/técnico
+                     sugeridos) antes de que el administrador valide el ticket. -->
+                {% if not user.is_inquilino %}
                 {% if ticket.ia_descripcion_tecnica or ticket.ia_categoria_sugerida %}
                 <section class="bg-white border border-violet-200 p-6">
                     <div class="flex items-center justify-between border-b border-violet-100 pb-2 mb-4">
@@ -125,6 +130,7 @@
                     {% endif %}
                 </section>
                 {% endif %}
+                {% endif %}
 
                 <!-- Comunicación Técnico ↔ Inquilino / Coordinación previa -->
                 {% if puede_mensajear %}
@@ -137,12 +143,12 @@
                             </p>
                         </div>
                         <span class="text-[0.65rem] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded-full">
-                            {% if request.user.is_tecnico %}{{ ticket.inquilino.get_full_name }}{% elif request.user.is_inquilino %}{{ ticket.tecnico.get_full_name|default:"Soporte Técnico / Admin" }}{% else %}Coordinación Admin ↔ Residente{% endif %}
+                            {% if request.user.is_tecnico %}{{ ticket.inquilino.get_full_name }}{% else %}{{ ticket.tecnico.get_full_name|default:"Técnico asignado" }}{% endif %}
                         </span>
                     </div>
                     {% if chat_coordinacion %}
                     <p class="text-xs text-violet-800 mb-4 bg-violet-100/60 p-3 border-l-2 border-violet-500 font-medium">
-                        💬 Tu ticket fue aprobado. Si necesitas coordinar un cambio de horario o no encuentras un turno conveniente, usa este chat para comunicarte con el administrador o el técnico asignado.
+                        💬 Tu ticket fue aprobado. Si necesitas coordinar un cambio de horario o no encuentras un turno conveniente, usa este chat para comunicarte con el técnico asignado.
                     </p>
                     {% endif %}
                     <div id="mensajes-hilo" class="space-y-5 max-h-80 overflow-y-auto pr-2">
@@ -153,6 +159,29 @@
 
                 <!-- Auto-agenda del inquilino (Estado APROBADO) -->
                 {% if puede_agendar %}
+                <section class="bg-emerald-50 border-2 border-emerald-300 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <p class="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-emerald-700">Tu reporte fue validado</p>
+                    </div>
+                    <div class="grid sm:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Categoría confirmada</p>
+                            <p class="text-sm font-semibold text-zinc-900 mt-1">{{ ticket.get_categoria_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Prioridad confirmada</p>
+                            <p class="mt-1">{% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}</p>
+                        </div>
+                        <div>
+                            <p class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">Técnico asignado</p>
+                            <p class="text-sm font-semibold text-zinc-900 mt-1">{{ ticket.tecnico.get_full_name|default:"Por confirmar" }}</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-emerald-800 mt-4 pt-4 border-t border-emerald-200">
+                        Elige un horario para la visita técnica más abajo.
+                    </p>
+                </section>
                 {% include 'tickets/partials/_schedule_picker.html' %}
                 {% endif %}
 
@@ -208,9 +237,11 @@
                         <button type="submit"{% if sin_tecnicos_disponibles %} disabled{% endif %} class="bg-zinc-900 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all{% if sin_tecnicos_disponibles %} opacity-50 cursor-not-allowed{% else %} hover:bg-amber-400 hover:text-zinc-900{% endif %}">Aprobar Ticket y Notificar Residente →</button>
                     </form>
 
-                    {# Validación en cliente: impide enviar la aprobación sin
-                       categoría, prioridad o técnico. El servidor revalida en
-                       TicketAdminValidateForm — esto es solo feedback inmediato. #}
+                    {% comment %}
+                    Validación en cliente: impide enviar la aprobación sin
+                    categoría, prioridad o técnico. El servidor revalida en
+                    TicketAdminValidateForm — esto es solo feedback inmediato.
+                    {% endcomment %}
                     <script>
                     (function () {
                         var form = document.getElementById('validate-form');
@@ -360,6 +391,7 @@
                         {% for destino, label in transiciones_con_label %}
                             {% if destino == 'ASIGNADO' %}{% comment %}Skip — la asignación es vía el picker de horario del inquilino{% endcomment %}
                             {% elif destino == 'RESUELTO' %}{% comment %}Skip — usar form de resolución con evidencia{% endcomment %}
+                            {% elif destino == 'APROBADO' %}{% comment %}Skip — usar el formulario de validación con categoría/prioridad/técnico{% endcomment %}
                             {% else %}
                             <form method="POST" action="{% url 'ticket_transition' ticket.pk destino %}">
                                 {% csrf_token %}

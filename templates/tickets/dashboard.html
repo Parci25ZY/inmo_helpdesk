@@ -10,7 +10,7 @@
             <svg class="w-6 h-6 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 21V9l8-6 8 6v12H4zm2-2h5v-5h2v5h5V10.1L12 5.275 6 10.1V19z"/></svg>
             <div>
                 <h1 class="text-lg font-bold tracking-tight">InmoHelpdesk <span class="font-normal text-zinc-600 mx-1.5">/</span> Panel Operativo</h1>
-                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">ID_SESION: {{ request.user.email }} | ROL: {{ request.user.get_role_display }}</p>
+                <p class="text-[0.65rem] font-mono tracking-widest text-zinc-400 uppercase mt-0.5">ID_SESION: {{ request.user.email }}</p>
             </div>
         </div>
         {% include 'partials/_nav.html' %}
@@ -200,7 +200,13 @@
                                 <p class="text-sm font-semibold text-zinc-900 group-hover:text-amber-600 transition-colors">{{ ticket.titulo }}</p>
                             </td>
                             <td class="py-4 px-6 align-top">{% include 'tickets/partials/_status_badge.html' with estado=ticket.estado display=ticket.get_estado_display %}</td>
-                            <td class="py-4 px-6 align-top">{% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}</td>
+                            <td class="py-4 px-6 align-top">
+                                {% if not request.user.is_inquilino or ticket.clasificacion_confirmada %}
+                                {% include 'tickets/partials/_priority_badge.html' with prioridad=ticket.prioridad display=ticket.get_prioridad_display %}
+                                {% else %}
+                                <span class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-400">{{ ticket.prioridad_pendiente_label }}</span>
+                                {% endif %}
+                            </td>
                             {% if request.user.is_admin or request.user.is_tecnico %}
                             <td class="py-4 px-6 align-top">
                                 <span class="text-sm text-zinc-700 truncate max-w-[140px] block">{{ ticket.inquilino.get_full_name|default:ticket.inquilino.email }}</span>

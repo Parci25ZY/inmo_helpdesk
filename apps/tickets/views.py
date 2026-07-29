@@ -564,14 +564,10 @@ class TicketValidateView(RoleRequiredMixin, UpdateView):
             messages.error(self.request, str(exc))
             return redirect('ticket_detail', pk=ticket.pk)
 
-        # Notificar al inquilino que su ticket fue aprobado
-        try:
-            from .notifications import notify_ticket_aprobado
-            notify_ticket_aprobado.apply_async(args=[ticket.pk], countdown=2)
-        except Exception:
-            logger.exception('notify_ticket_aprobado falló para ticket %s', ticket.pk)
-
-        # Correos SMTP: al residente (agendar cita) y al técnico (detalles)
+        # Correos SMTP: al residente (agendar cita) y al técnico (detalles).
+        # Antes también se disparaba notify_ticket_aprobado (Celery, texto
+        # plano) para el mismo evento — el residente recibía dos correos
+        # distintos por una sola aprobación. Se dejó solo el HTML de abajo.
         try:
             from .services.email_service import (
                 send_ticket_approved_resident_email,
@@ -701,15 +697,20 @@ class TicketTransitionView(LoginRequiredMixin, View):
     """Endpoint POST para mover un ticket a un estado destino concreto.
 
     Reservado para transiciones "simples" que no requieren datos
-    adicionales del actor. APROBADO→ASIGNADO y EN_PROGRESO→RESUELTO
-    exigen datos que solo se capturan en sus formularios dedicados
-    (:class:`InquilinoScheduleView`, :class:`TicketResolveView`) — un
-    inquilino podía llegar antes a ASIGNADO por esta vía genérica sin
-    horario, y un técnico a RESUELTO sin evidencia, así que esas dos
-    transiciones se bloquean aquí y se redirige al flujo correcto.
+    adicionales del actor. PENDIENTE_VALIDACION→APROBADO, APROBADO→ASIGNADO
+    y EN_PROGRESO→RESUELTO exigen datos que solo se capturan en sus
+    formularios dedicados (:class:`TicketValidateView`,
+    :class:`InquilinoScheduleView`, :class:`TicketResolveView`) — un
+    admin podía aprobar un ticket por esta vía genérica sin categoría,
+    prioridad ni técnico asignado (transition_ticket() no valida esos
+    datos para el destino APROBADO, solo para ASIGNADO), un inquilino
+    podía llegar antes a ASIGNADO sin horario, y un técnico a RESUELTO
+    sin evidencia, así que esas tres transiciones se bloquean aquí y se
+    redirige al flujo correcto.
     """
 
     _REQUIERE_FORMULARIO_DEDICADO = {
+        (TicketStatus.PENDIENTE_VALIDACION, TicketStatus.APROBADO),
         (TicketStatus.APROBADO, TicketStatus.ASIGNADO),
         (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO),
     }

@@ -62,6 +62,17 @@ _ROLE_RULES: Mapping[tuple[str, str], Set[str]] = {
     (TicketStatus.EN_PROGRESO, TicketStatus.RESUELTO): {'TECNICO'},
 }
 # La cancelación está permitida desde cualquier no-terminal para ADMIN.
+# El propio INQUILINO también puede cancelar, pero solo hasta ASIGNADO —
+# una vez que el técnico está en camino o trabajando, ya invirtió tiempo
+# y agenda, así que cancelar a partir de ahí requiere coordinarse con el
+# administrador en vez de ser una acción unilateral del residente.
+_ESTADOS_CANCELABLES_POR_INQUILINO: Set[str] = {
+    TicketStatus.CREADO_PENDIENTE_IA,
+    TicketStatus.ANALIZADO_POR_IA,
+    TicketStatus.PENDIENTE_VALIDACION,
+    TicketStatus.APROBADO,
+    TicketStatus.ASIGNADO,
+}
 
 
 class InvalidTransitionError(Exception):
@@ -91,7 +102,10 @@ def allowed_transitions_for(ticket: Ticket, *, role: str | None = None) -> Itera
 def _role_allowed_for(origen: str, destino: str) -> Set[str]:
     """Conjunto de roles permitidos para una transición específica."""
     if destino == TicketStatus.CANCELADO:
-        return {'ADMIN', 'SYSTEM'}
+        roles = {'ADMIN', 'SYSTEM'}
+        if origen in _ESTADOS_CANCELABLES_POR_INQUILINO:
+            roles = roles | {'INQUILINO'}
+        return roles
     return _ROLE_RULES.get((origen, destino), set())
 
 

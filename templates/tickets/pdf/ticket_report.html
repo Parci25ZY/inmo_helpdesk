@@ -556,7 +556,7 @@
     <div class="section-title section-title--amber">Descripción del Incidente</div>
     <div class="text-block">{{ ticket.descripcion }}</div>
 
-    {% if ticket.ia_descripcion_tecnica %}
+    {% if is_audit and ticket.ia_descripcion_tecnica %}
     <div class="mt-6">
       <div class="text-block text-block--ia">
         <div class="text-block-label">Análisis Técnico IA</div>
@@ -628,38 +628,7 @@
     <div class="no-evidencias">No se adjuntaron evidencias de resolución.</div>
     {% endif %}
   </div>
-
-
-  {% if is_audit %}
-  <!-- ════════════════════════════════════════════════════════════════
-       HISTORIAL DE ESTADOS (SOLO AUDITORÍA)
-       ════════════════════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title section-title--indigo">Historial de Estados — Auditoría</div>
-    {% if historial %}
-    <div class="timeline">
-      {% for h in historial %}
-      <div class="timeline-row">
-        <div class="timeline-dot {% if h.estado_nuevo == 'RESUELTO' %}timeline-dot--final{% endif %}"></div>
-        <div class="timeline-estado">
-          {% if h.estado_anterior %}{{ h.get_estado_anterior_display }} →{% endif %}
-          {{ h.get_estado_nuevo_display }}
-        </div>
-        <div class="timeline-actor">{{ h.actor.get_full_name|default:"Sistema" }}</div>
-        <div class="timeline-fecha">{{ h.creado_en|date:"d/m/Y H:i" }}</div>
-      </div>
-      {% if h.nota %}
-      <div class="timeline-nota">{{ h.nota }}</div>
-      {% endif %}
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="no-evidencias">Sin historial de transiciones registrado.</div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-
+  
   <!-- ════════════════════════════════════════════════════════════════
        PIE DE PÁGINA
        ════════════════════════════════════════════════════════════ -->

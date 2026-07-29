@@ -41,6 +41,9 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     height: 100%;
+    /* Ancla el overlay de confirmación (.chatbot-modal-overlay) a este
+       panel en vez de a toda la ventana. */
+    position: relative;
 }
 
 .chatbot-shell__head {
@@ -579,7 +582,10 @@
 
 /* ── Confirmación "Nueva conversación" (reemplaza el confirm() nativo) ── */
 .chatbot-modal-overlay {
-    position: fixed;
+    /* absolute (no fixed): queda contenido dentro de .chatbot-shell en vez
+       de cubrir toda la ventana — la confirmación es una decisión que solo
+       afecta al chat, no al resto de la página. */
+    position: absolute;
     inset: 0;
     z-index: 60;
     display: flex;
