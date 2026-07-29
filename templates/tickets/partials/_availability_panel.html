@@ -27,7 +27,7 @@
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="space-y-1">
                 <div class="flex items-center gap-2">
-                    <span class="text-[0.65rem] font-bold tracking-widest uppercase px-2 py-0.5 bg-violet-500 text-white font-mono">⚡ Pre-asignación Automática IA</span>
+                    <span class="text-[0.65rem] font-bold tracking-widest uppercase px-2 py-0.5 bg-violet-500 text-white font-mono">Pre-asignación Automática IA</span>
                     <span class="text-xs text-violet-300 font-medium">{{ ticket.ia_tecnico_sugerido.get_full_name }}</span>
                 </div>
                 <p class="text-xs text-zinc-300">
@@ -60,7 +60,7 @@
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-bold text-white">{{ info.nombre }}</span>
                             {% if info.tiene_especialidad %}
-                            <span class="text-[0.6rem] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30">★ Especialista</span>
+                            <span class="text-[0.6rem] font-mono font-bold uppercase px-1.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30">Especialista</span>
                             {% endif %}
                         </div>
                         <p class="text-[0.65rem] font-mono text-zinc-400">{{ info.especialidades|default:"Sin especialidad" }}</p>
