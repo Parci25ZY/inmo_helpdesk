@@ -176,8 +176,8 @@ class TicketListView(LoginRequiredMixin, ListView):
         )
         ctx.update({
             'estados': (
-                [c for c in TicketStatus.choices if c[0] in _estados_tecnico]
-                if user.is_tecnico else TicketStatus.choices
+                TicketStatus.choices if user.is_admin
+                else [c for c in TicketStatus.choices if c[0] in _estados_tecnico]
             ),
             'estado_filtrado': self.request.GET.get('estado', ''),
             'prioridad_filtrada': self.request.GET.get('prioridad', ''),
