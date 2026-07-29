@@ -101,6 +101,16 @@ class EdificioDeleteView(AdminRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         nombre = self.object.nombre
+        unidades_ocupadas = self.object.unidades.filter(inquilino__isnull=False).count()
+        if unidades_ocupadas:
+            messages.error(
+                self.request,
+                f'No se puede eliminar "{nombre}": tiene {unidades_ocupadas} '
+                f'unidad{"es" if unidades_ocupadas != 1 else ""} con residente asignado. '
+                'Reasigna o retira a esos residentes primero, o márcalo como inactivo '
+                'en su lugar.',
+            )
+            return redirect('edificio_list')
         try:
             response = super().form_valid(form)
         except ProtectedError:
@@ -202,6 +212,14 @@ class UnidadDeleteView(AdminRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         etiqueta = str(self.object)
+        if self.object.inquilino_id is not None:
+            messages.error(
+                self.request,
+                f'No se puede eliminar "{etiqueta}": tiene un residente asignado '
+                f'({self.object.inquilino.get_full_name()}). Reasigna o retira al '
+                'residente primero, o márcala como inactiva en su lugar.',
+            )
+            return redirect('unidad_list')
         try:
             response = super().form_valid(form)
         except ProtectedError:

@@ -41,9 +41,8 @@ class UnidadForm(forms.ModelForm):
         if instancia and instancia.pk and instancia.inquilino_id:
             qs = qs | CustomUser.objects.filter(pk=instancia.inquilino_id)
         self.fields['inquilino'].queryset = qs.distinct().order_by('first_name')
-        self.fields['inquilino'].empty_label = '— Selecciona un residente —'
-        self.fields['inquilino'].required = True
-        self.fields['inquilino'].error_messages['required'] = 'Debes asignar un residente a la unidad.'
+        self.fields['inquilino'].empty_label = '— Sin asignar (unidad vacante) —'
+        self.fields['inquilino'].required = False
         self.fields['area_m2'].required = True
         self.fields['area_m2'].error_messages['required'] = 'El área en metros cuadrados es obligatoria.'
         self.fields['piso'].required = True
