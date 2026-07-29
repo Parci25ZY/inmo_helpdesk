@@ -17,3 +17,6 @@ __pycache__/
 db.sqlite3
 staticfiles/
 *.log
+
+# Contenido subido por usuarios (evidencias de tickets) — no versionar
+media/
