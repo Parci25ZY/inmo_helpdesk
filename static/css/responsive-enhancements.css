@@ -34,6 +34,16 @@
         display: none !important;
     }
 
+    /* Excepción: #notif-dropdown vive dentro de <header> en el DOM (se
+       incluye desde _nav.html) aunque se reposiciona con position:fixed
+       fuera de él visualmente en móvil/tablet — la regla `header p` de
+       arriba igual lo alcanza por ser un selector descendiente y apagaba
+       el mensaje y la descripción de cada notificación (el resto —
+       iconos, hora, "Ver ticket" — son <span>/<svg>, por eso sí se veían). */
+    #notif-dropdown p {
+        display: block !important;
+    }
+
     /* Asegurar que el título principal no desborde ni empuje los iconos en móvil */
     header h1 {
         font-size: 1.05rem !important;
